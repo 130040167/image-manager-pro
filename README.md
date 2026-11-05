@@ -57,6 +57,11 @@ Choose whether to show a measurement's name, value, or both; adjust line endpoin
 
 Open a workspace, run **Image Manager Pro** from the Command Palette, or open it from a folder's context menu. The default shortcut is `Shift+Alt+J` on Windows/Linux and `Cmd+Alt+J` on macOS.
 
+Choose **English** or **Simplified Chinese** in the extension's language settings
+(`image-manager.appearance.language`). Editor tools, properties, colors and
+measurement labels update immediately while retaining the current edits.
+Custom names and existing text keep their original content.
+
 Image processing uses Sharp and platform-specific native dependencies. The extension can download these dependencies when needed; the first setup requires network access. Supported processing and conversion formats depend on the available native codecs. NPY and raw binary formats require compatible data and decoding settings.
 
 For packaging and publication steps, see [RELEASING.md](./RELEASING.md).

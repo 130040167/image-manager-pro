@@ -1,5 +1,6 @@
 import type { MeasurementEndpointStyle } from '../core/model/doc'
 import { useEffect, useRef, useState } from 'react'
+import { useEditorTranslation } from '../../editor-i18n'
 
 const OPTIONS: { value: MeasurementEndpointStyle, label: string }[] = [
   { value: 'none', label: '无' },
@@ -16,6 +17,7 @@ export function MeasurementEndpointPicker(props: {
   disabled?: boolean
   onChange: (value: MeasurementEndpointStyle) => void
 }) {
+  const et = useEditorTranslation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -42,8 +44,8 @@ export function MeasurementEndpointPicker(props: {
                 key={option.value}
                 type='button'
                 role='option'
-                title={option.label}
-                aria-label={option.label}
+                title={et(option.label)}
+                aria-label={et(option.label)}
                 aria-selected={props.value === option.value}
                 onClick={() => {
                   props.onChange(option.value)

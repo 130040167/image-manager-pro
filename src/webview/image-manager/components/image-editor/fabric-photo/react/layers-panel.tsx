@@ -2,6 +2,7 @@ import type { DragEvent, JSX, MouseEvent } from 'react'
 import type { EditorObject } from '../core'
 import { useRef, useState } from 'react'
 import { FiArrowUpRight, FiCircle, FiEdit3, FiEye, FiEyeOff, FiGrid, FiImage, FiLock, FiSlash, FiSquare, FiTriangle, FiType, FiUnlock } from 'react-icons/fi'
+import { editorText, useEditorTranslation } from '../../editor-i18n'
 import { measurementDisplayName } from '../../measurement-label'
 import { useEditor, useEditorState } from './hooks'
 
@@ -13,30 +14,30 @@ export interface LayersPanelProps {
 function typeInfo(obj: EditorObject): { icon: JSX.ElementType, baseName: string } {
   switch (obj.kind) {
     case 'image':
-      return { icon: FiImage, baseName: '图片' }
+      return { icon: FiImage, baseName: editorText('图片') }
     case 'text':
-      return { icon: FiType, baseName: '文本' }
+      return { icon: FiType, baseName: editorText('文本') }
     case 'shape':
       if (obj.shapeType === 'rect') {
-        return { icon: FiSquare, baseName: '矩形' }
+        return { icon: FiSquare, baseName: editorText('矩形') }
       }
       if (obj.shapeType === 'circle') {
-        return { icon: FiCircle, baseName: '圆形' }
+        return { icon: FiCircle, baseName: editorText('圆形') }
       }
-      return { icon: FiTriangle, baseName: '三角形' }
+      return { icon: FiTriangle, baseName: editorText('三角形') }
     case 'path':
       if (obj.tool === 'arrow') {
-        return { icon: FiArrowUpRight, baseName: '箭头' }
+        return { icon: FiArrowUpRight, baseName: editorText('箭头') }
       }
       if (obj.tool === 'line') {
-        return { icon: FiSlash, baseName: '直线' }
+        return { icon: FiSlash, baseName: editorText('直线') }
       }
       if (obj.tool === 'measurement') {
         return { icon: FiSlash, baseName: measurementDisplayName(obj) }
       }
-      return { icon: FiEdit3, baseName: '画笔' }
+      return { icon: FiEdit3, baseName: editorText('画笔') }
     case 'mosaic':
-      return { icon: FiGrid, baseName: '马赛克' }
+      return { icon: FiGrid, baseName: editorText('马赛克') }
   }
 }
 
@@ -66,6 +67,7 @@ interface DropIndicator {
  * 空列表显示占位文案。零编辑逻辑，全部交互走 core 公开 API。
  */
 export function LayersPanel(props: LayersPanelProps): JSX.Element {
+  const et = useEditorTranslation()
   const editor = useEditor()
   const objects = useEditorState(state => state.doc.objects)
   const selection = useEditorState(state => state.selection)
@@ -130,10 +132,10 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
   const rootClassName = props.className === undefined ? 'fp-layers-panel' : `fp-layers-panel ${props.className}`
   return (
     <div className={rootClassName}>
-      <div className='fp-layers-header'>图层</div>
+      <div className='fp-layers-header'>{et('图层')}</div>
       {display.length === 0
         ? (
-            <div className='fp-layers-empty'>暂无图层，使用左侧工具绘制</div>
+            <div className='fp-layers-empty'>{et('暂无图层，使用左侧工具绘制')}</div>
           )
         : (
             <ul className='fp-layers-list'>
@@ -169,7 +171,7 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
                     <button
                       type='button'
                       className={hidden ? 'fp-layer-btn fp-layer-btn-active' : 'fp-layer-btn'}
-                      aria-label={hidden ? `显示 ${names.get(obj.id) ?? ''}` : `隐藏 ${names.get(obj.id) ?? ''}`}
+                      aria-label={hidden ? et('显示 {{name}}', { name: names.get(obj.id) ?? '' }) : et('隐藏 {{name}}', { name: names.get(obj.id) ?? '' })}
                       aria-pressed={hidden}
                       onClick={(event) => {
                         event.stopPropagation()
@@ -181,7 +183,7 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
                     <button
                       type='button'
                       className={locked ? 'fp-layer-btn fp-layer-btn-active' : 'fp-layer-btn'}
-                      aria-label={locked ? `解锁 ${names.get(obj.id) ?? ''}` : `锁定 ${names.get(obj.id) ?? ''}`}
+                      aria-label={locked ? et('解锁 {{name}}', { name: names.get(obj.id) ?? '' }) : et('锁定 {{name}}', { name: names.get(obj.id) ?? '' })}
                       aria-pressed={locked}
                       onClick={(event) => {
                         event.stopPropagation()

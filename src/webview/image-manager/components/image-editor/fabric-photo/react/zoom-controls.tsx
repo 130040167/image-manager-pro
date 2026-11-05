@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { FiCrosshair, FiMinus, FiPlus } from 'react-icons/fi'
+import { useEditorTranslation } from '../../editor-i18n'
 import { nextEditorZoomPercent } from '../../editor-zoom'
 import { useEditor, useEditorState } from './hooks'
 import './zoom-controls.css'
@@ -13,6 +14,7 @@ const PlusIcon = FiPlus as unknown as JSX.ElementType
  * 缩放控件：标题栏中的紧凑控件（− / 百分比输入 / ＋ / 复位居中）。
  */
 export function ZoomControls(props: { className?: string }): JSX.Element {
+  const et = useEditorTranslation()
   const editor = useEditor()
   const zoomPercent = useEditorState(() => Math.round(editor.getPixelZoom() * 100))
   const [draft, setDraft] = useState(String(zoomPercent))
@@ -47,8 +49,8 @@ export function ZoomControls(props: { className?: string }): JSX.Element {
       <button
         type='button'
         className='fp-zoom-btn'
-        title='缩小'
-        aria-label='缩小'
+        title={et('缩小')}
+        aria-label={et('缩小')}
         onClick={() => editor.setPixelZoom(nextEditorZoomPercent(editor.getPixelZoom() * 100, -1) / 100)}
       >
         <MinusIcon size={16} aria-hidden />
@@ -56,8 +58,8 @@ export function ZoomControls(props: { className?: string }): JSX.Element {
       <input
         type='number'
         className='fp-zoom-value'
-        title='缩放百分比'
-        aria-label='缩放百分比'
+        title={et('缩放百分比')}
+        aria-label={et('缩放百分比')}
         value={draft}
         min={10}
         max={5000}
@@ -92,8 +94,8 @@ export function ZoomControls(props: { className?: string }): JSX.Element {
       <button
         type='button'
         className='fp-zoom-btn'
-        title='放大'
-        aria-label='放大'
+        title={et('放大')}
+        aria-label={et('放大')}
         onClick={() => editor.setPixelZoom(nextEditorZoomPercent(editor.getPixelZoom() * 100, 1) / 100)}
       >
         <PlusIcon size={16} aria-hidden />
@@ -101,8 +103,8 @@ export function ZoomControls(props: { className?: string }): JSX.Element {
       <button
         type='button'
         className='fp-zoom-btn fp-zoom-reset'
-        title='重置缩放并居中'
-        aria-label='重置缩放并居中'
+        title={et('重置缩放并居中')}
+        aria-label={et('重置缩放并居中')}
         onClick={() => editor.resetZoom()}
       >
         <CrosshairIcon size={15} aria-hidden />

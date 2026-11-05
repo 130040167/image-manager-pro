@@ -2,6 +2,7 @@ import type { JSX, ReactNode } from 'react'
 import type { EditorObject, ShapeObject } from '../core'
 import { useEffect, useRef, useState } from 'react'
 import { FiCircle, FiMinus } from 'react-icons/fi'
+import { useEditorTranslation } from '../../editor-i18n'
 import { ColorPalette } from './color-palette'
 import { useEditor, useEditorState, useToolSettings } from './hooks'
 import { activateTool, applyColor, modeToTool } from './tool-settings'
@@ -48,6 +49,7 @@ const DASH_OPTIONS = [
 ] as const
 
 export function DashPicker(props: { value: number[], disabled?: boolean, onChange: (dash: number[]) => void }) {
+  const et = useEditorTranslation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -62,18 +64,18 @@ export function DashPicker(props: { value: number[], disabled?: boolean, onChang
   }, [open])
   return (
     <div className='fp-dash-picker' ref={rootRef}>
-      <button type='button' className='fp-dash-trigger' aria-label='线型' aria-expanded={open} disabled={props.disabled} onClick={() => setOpen(value => !value)}>
+      <button type='button' className='fp-dash-trigger' aria-label={et('线型')} aria-expanded={open} disabled={props.disabled} onClick={() => setOpen(value => !value)}>
         <DashIcon dash={props.value} />
       </button>
       {open
         ? (
-            <div className='fp-dash-menu' role='listbox' aria-label='线型'>
+            <div className='fp-dash-menu' role='listbox' aria-label={et('线型')}>
               {DASH_OPTIONS.map(item => (
                 <button
                   key={item.label}
                   type='button'
                   role='option'
-                  aria-label={item.label}
+                  aria-label={et(item.label)}
                   aria-selected={JSON.stringify(item.dash) === JSON.stringify(props.value)}
                   onClick={() => {
                     props.onChange([...item.dash])
@@ -114,6 +116,7 @@ function ArrowHeadIcon(props: { value: ArrowHeadStyle }) {
 }
 
 export function ArrowHeadPicker(props: { value: ArrowHeadStyle, onChange: (value: ArrowHeadStyle) => void, label: string, disabled?: boolean }) {
+  const et = useEditorTranslation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -143,8 +146,8 @@ export function ArrowHeadPicker(props: { value: ArrowHeadStyle, onChange: (value
               key={option.value}
               type='button'
               role='option'
-              title={option.label}
-              aria-label={option.label}
+              title={et(option.label)}
+              aria-label={et(option.label)}
               aria-selected={props.value === option.value}
               onClick={() => {
                 props.onChange(option.value)
@@ -192,6 +195,7 @@ function paletteValue(objects: readonly EditorObject[], preset: string): string 
  * 色板改色统一走 applyColor 路由（选中对象优先改对象，否则写工具预设并实时同步 editor）。
  */
 export function FloatingOptions(props: { className?: string, measureActive?: boolean, onMeasure?: (patch: Partial<{ kind: 'line' | 'polygon' | 'ellipse' | 'angle', color: string, width: number, dash: number[] }>) => void }): JSX.Element | null {
+  const et = useEditorTranslation()
   const editor = useEditor()
   const { toolSettings, setToolSettings } = useToolSettings()
   const mode = useEditorState(state => state.mode)
@@ -209,10 +213,10 @@ export function FloatingOptions(props: { className?: string, measureActive?: boo
     content = (
       <>
         <button type='button' className='fp-option-btn' onClick={() => editor.endCropping(true)}>
-          Apply
+          {et('应用')}
         </button>
         <button type='button' className='fp-option-btn' onClick={() => editor.endCropping(false)}>
-          Cancel
+          {et('取消')}
         </button>
       </>
     )
@@ -295,7 +299,7 @@ export function FloatingOptions(props: { className?: string, measureActive?: boo
     content = (
       <div className='fp-shape-options'>
         <div className='fp-shape-primary'>
-          <div className='fp-shape-kind-group' role='group' aria-label='形状类型'>
+          <div className='fp-shape-kind-group' role='group' aria-label={et('形状类型')}>
             {SHAPE_TYPES.map(({ type, label }) => {
               const isActive = shapeKind === type
               return (
@@ -303,8 +307,8 @@ export function FloatingOptions(props: { className?: string, measureActive?: boo
                   key={type}
                   type='button'
                   className={isActive ? 'fp-option-btn fp-shape-kind-btn fp-option-btn-active' : 'fp-option-btn fp-shape-kind-btn'}
-                  title={label}
-                  aria-label={label}
+                  title={et(label)}
+                  aria-label={et(label)}
                   aria-pressed={isActive}
                   onClick={() => setShapeKind(type)}
                 >
@@ -315,8 +319,8 @@ export function FloatingOptions(props: { className?: string, measureActive?: boo
           </div>
           <span className='fp-shape-divider' aria-hidden='true' />
           <label className='fp-shape-width'>
-            <span>线宽</span>
-            <select aria-label='形状线宽' value={width} onChange={event => setWidth(Number(event.target.value))}>
+            <span>{et('线宽')}</span>
+            <select aria-label={et('形状线宽')} value={width} onChange={event => setWidth(Number(event.target.value))}>
               {WIDTH_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
@@ -326,18 +330,18 @@ export function FloatingOptions(props: { className?: string, measureActive?: boo
           <ColorPalette value={paletteValue(selectedObjects, color)} onChange={onColor} />
           {shapeKind === 'arrow' && (
             <div className='fp-shape-arrow-ends'>
-              <span>起点</span>
+              <span>{et('起点')}</span>
               <ArrowHeadPicker
-                label='创建箭头起点'
+                label={et('创建箭头起点')}
                 value={toolSettings.arrow.startHead ?? 'none'}
                 onChange={(startHead) => {
                   setToolSettings(prev => ({ ...prev, arrow: { ...prev.arrow, startHead } }))
                   editor.setBrush({ startHead })
                 }}
               />
-              <span>终点</span>
+              <span>{et('终点')}</span>
               <ArrowHeadPicker
-                label='创建箭头终点'
+                label={et('创建箭头终点')}
                 value={toolSettings.arrow.endHead ?? 'filled'}
                 onChange={(endHead) => {
                   setToolSettings(prev => ({ ...prev, arrow: { ...prev.arrow, endHead } }))
@@ -365,11 +369,11 @@ export function FloatingOptions(props: { className?: string, measureActive?: boo
       <div className='fp-measure-options'>
         <div className='fp-option-group'>
           {kinds.map(({ kind, icon: Icon, label }) => (
-            <button key={kind} type='button' className={toolSettings.measure.kind === kind ? 'fp-option-btn fp-option-btn-icon fp-option-btn-active' : 'fp-option-btn fp-option-btn-icon'} title={label} aria-label={label} onClick={() => changeMeasure({ kind })}><Icon size={16} /></button>
+            <button key={kind} type='button' className={toolSettings.measure.kind === kind ? 'fp-option-btn fp-option-btn-icon fp-option-btn-active' : 'fp-option-btn fp-option-btn-icon'} title={et(label)} aria-label={et(label)} onClick={() => changeMeasure({ kind })}><Icon size={16} /></button>
           ))}
           <label className='fp-measure-select'>
-            <span>线宽</span>
-            <select aria-label='线宽' value={toolSettings.measure.width} onChange={event => changeMeasure({ width: Number(event.target.value) })}>
+            <span>{et('线宽')}</span>
+            <select aria-label={et('线宽')} value={toolSettings.measure.width} onChange={event => changeMeasure({ width: Number(event.target.value) })}>
               {WIDTH_OPTIONS.map(width => (
                 <option key={width} value={width}>
                   {width}
@@ -380,7 +384,7 @@ export function FloatingOptions(props: { className?: string, measureActive?: boo
           </label>
           <DashPicker value={toolSettings.measure.dash} onChange={dash => changeMeasure({ dash })} />
         </div>
-        <ColorPalette value={toolSettings.measure.color} inputLabel='测量颜色' onChange={color => changeMeasure({ color })} />
+        <ColorPalette value={toolSettings.measure.color} inputLabel={et('测量颜色')} onChange={color => changeMeasure({ color })} />
       </div>
     )
   }
@@ -394,7 +398,7 @@ export function FloatingOptions(props: { className?: string, measureActive?: boo
       editor.setMosaicDimensions(next)
     }
     content = (
-      <span className='fp-option-group' title='马赛克块边长（像素）'>
+      <span className='fp-option-group' title={et('马赛克块边长（像素）')}>
         {MOSAIC_DIMENSIONS.map((dimensions) => {
           const isActive = toolSettings.mosaic.dimensions === dimensions
           return (
@@ -410,14 +414,14 @@ export function FloatingOptions(props: { className?: string, measureActive?: boo
           )
         })}
         <label className='fp-mosaic-input'>
-          <span>大小</span>
+          <span>{et('大小')}</span>
           <input
             type='number'
             min={1}
             max={512}
             step={1}
             value={toolSettings.mosaic.dimensions}
-            aria-label='马赛克大小'
+            aria-label={et('马赛克大小')}
             onChange={event => setDimensions(Number(event.currentTarget.value))}
           />
         </label>

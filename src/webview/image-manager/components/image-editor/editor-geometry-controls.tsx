@@ -4,6 +4,7 @@ import type { Editor, PathObject } from './fabric-photo/core'
 import type { Point } from './measurement'
 import { useMemoizedFn } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
+import { useEditorTranslation } from './editor-i18n'
 import { arrowHeadControlPoints } from './fabric-photo/core/render/shapes/arrow-path'
 import { angleArcHandle } from './measurement'
 import { measurementCanvasLabelLayouts, measurementLabelFontFamily, measurementLabelSettings, measurementMetricLabelSettings } from './measurement-label'
@@ -22,6 +23,7 @@ export function EditorGeometryControls({ editor, placement, measurements, creati
   measurements: MeasurementObject[]
   creating: boolean
 }) {
+  const et = useEditorTranslation()
   const [, render] = useState(0)
   const { selection: labelSelection, selectLabel } = useMeasurementLabelSelection(editor)
   const dragRef = useRef<Drag | null>(null)
@@ -198,7 +200,7 @@ export function EditorGeometryControls({ editor, placement, measurements, creati
                   role='button'
                   tabIndex={active ? 0 : -1}
                   aria-pressed={labelSelected}
-                  aria-label={`拖动${box.kind === 'perimeter' ? '周长' : box.kind === 'area' ? '面积' : ''}标注`}
+                  aria-label={et(box.kind === 'perimeter' ? '拖动周长标注' : box.kind === 'area' ? '拖动面积标注' : '拖动标注')}
                   x={box.left}
                   y={box.top}
                   width={box.width}
@@ -227,7 +229,7 @@ export function EditorGeometryControls({ editor, placement, measurements, creati
               <g className='fp-geometry-handle' data-measurement-arc={object.id} style={{ cursor: 'grab' }} onPointerDown={event => begin(event, object, 'arc')}>
                 <circle className='fp-geometry-handle-hit' cx={handle.x} cy={handle.y} r={hitRadius} />
                 <circle className='fp-geometry-handle-visible fp-geometry-handle-accent' cx={handle.x} cy={handle.y} r={radius} vectorEffect='non-scaling-stroke' />
-                <title>拖动调整夹角弧线</title>
+                <title>{et('拖动调整夹角弧线')}</title>
               </g>
             )}
           </g>
@@ -249,7 +251,7 @@ export function EditorGeometryControls({ editor, placement, measurements, creati
               <g key={kind} className='fp-geometry-handle' data-arrow-handle={kind} style={{ cursor: 'move' }} onPointerDown={event => begin(event, object, kind)}>
                 <circle className='fp-geometry-handle-hit' cx={point.x} cy={point.y} r={hitRadius} />
                 <circle className='fp-geometry-handle-visible fp-geometry-handle-endpoint' cx={point.x} cy={point.y} r={radius} vectorEffect='non-scaling-stroke' />
-                <title>{kind === 'start' ? '起点' : '终点'}</title>
+                <title>{et(kind === 'start' ? '起点' : '终点')}</title>
               </g>
             ))}
             {heads.map(({ side, tip, base, wing }) => (
@@ -262,7 +264,7 @@ export function EditorGeometryControls({ editor, placement, measurements, creati
                     <g key={kind} className='fp-geometry-handle' data-arrow-handle={handleName} style={{ cursor: 'move' }} onPointerDown={event => begin(event, object, kind)}>
                       <circle className='fp-geometry-handle-hit' cx={point.x} cy={point.y} r={hitRadius} />
                       <rect className='fp-geometry-handle-visible fp-geometry-handle-accent' x={point.x - radius} y={point.y - radius} width={radius * 2} height={radius * 2} transform={`rotate(45 ${point.x} ${point.y})`} vectorEffect='non-scaling-stroke' />
-                      <title>{dimension === 'length' ? `${side === 'start' ? '起始' : '结束'}箭头长度` : `${side === 'start' ? '起始' : '结束'}箭头宽度`}</title>
+                      <title>{et(dimension === 'length' ? side === 'start' ? '起始箭头长度' : '结束箭头长度' : side === 'start' ? '起始箭头宽度' : '结束箭头宽度')}</title>
                     </g>
                   )
                 })}

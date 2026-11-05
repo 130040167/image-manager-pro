@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { useEditorTranslation } from '../../editor-i18n'
 import { hexToRgb, isHexColor, normalizeHex, rgbToHex } from './color-palette-utils'
 import './color-palette.css'
 
@@ -51,6 +52,7 @@ function ColorButton(props: { color: string, active: boolean, label: string, onS
 }
 
 export function ColorPalette(props: ColorPaletteProps): JSX.Element {
+  const et = useEditorTranslation()
   const rootClassName = props.className === undefined ? 'fp-color-palette' : `fp-color-palette ${props.className}`
   const normalizedValue = normalizeHex(props.value) ?? props.value.toLowerCase()
   const customActive = !(PALETTE_COLORS as readonly string[]).includes(normalizedValue)
@@ -64,7 +66,7 @@ export function ColorPalette(props: ColorPaletteProps): JSX.Element {
   const customButton = useRef<HTMLButtonElement>(null)
   const currentColor = useRef(props.value)
   currentColor.current = props.value
-  const customLabel = props.inputLabel ?? '自定义颜色'
+  const customLabel = props.inputLabel ?? et('自定义颜色')
 
   useEffect(() => {
     const normalized = normalizeHex(props.value)
@@ -159,22 +161,22 @@ export function ColorPalette(props: ColorPaletteProps): JSX.Element {
   }
 
   return (
-    <div ref={root} className={rootClassName} role='group' aria-label='色板'>
-      {PALETTE_COLORS.map(color => <ColorButton key={color} color={color} active={normalizedValue === color} label={`色板 ${color}`} onSelect={select} />)}
+    <div ref={root} className={rootClassName} role='group' aria-label={et('色板')}>
+      {PALETTE_COLORS.map(color => <ColorButton key={color} color={color} active={normalizedValue === color} label={et('色板 {{color}}', { color })} onSelect={select} />)}
       <span className='fp-color-custom-separator' aria-hidden='true' />
       <button ref={customButton} type='button' className={customActive ? 'fp-color-custom fp-color-custom-active' : 'fp-color-custom'} aria-label={customLabel} aria-pressed={customActive} aria-current={customActive ? 'true' : undefined} aria-expanded={customOpen} onClick={toggleCustom}>
         <span className='fp-color-custom-rainbow' style={customActive ? { background: normalizedValue } : undefined} />
       </button>
       {customOpen && (
-        <div className={`fp-custom-color-panel${panelPlacement}`} role='dialog' aria-label={`${customLabel}面板`}>
+        <div className={`fp-custom-color-panel${panelPlacement}`} role='dialog' aria-label={et('{{label}}面板', { label: customLabel })}>
           <div className='fp-custom-color-row'>
             <label className='fp-custom-color-hex'>
               <span>HEX</span>
               <input ref={hexInput} aria-label='HEX' value={hexDraft} maxLength={7} spellCheck={false} onChange={event => updateHex(event.target.value)} onBlur={() => rememberColor(hexDraft)} onKeyDown={event => event.key === 'Enter' && rememberColor(hexDraft)} />
             </label>
-            <input className='fp-native-color-input' type='color' aria-label={`${customLabel}系统取色`} value={normalizeHex(hexDraft) ?? '#000000'} onChange={event => select(event.target.value)} />
+            <input className='fp-native-color-input' type='color' aria-label={et('{{label}}系统取色', { label: customLabel })} value={normalizeHex(hexDraft) ?? '#000000'} onChange={event => select(event.target.value)} />
           </div>
-          <div className='fp-custom-color-rgb' aria-label='RGB 颜色'>
+          <div className='fp-custom-color-rgb' aria-label={et('RGB 颜色')}>
             {(['R', 'G', 'B'] as const).map((channel, index) => (
               <label key={channel}>
                 <span>{channel}</span>
@@ -183,14 +185,14 @@ export function ColorPalette(props: ColorPaletteProps): JSX.Element {
             ))}
           </div>
           <div className='fp-custom-color-section'>
-            <span>推荐</span>
-            <div className='fp-custom-color-grid'>{RECOMMENDED_COLORS.map(color => <ColorButton key={color} color={color} active={normalizedValue === color} label={`推荐色 ${color}`} onSelect={select} />)}</div>
+            <span>{et('推荐')}</span>
+            <div className='fp-custom-color-grid'>{RECOMMENDED_COLORS.map(color => <ColorButton key={color} color={color} active={normalizedValue === color} label={et('推荐色 {{color}}', { color })} onSelect={select} />)}</div>
           </div>
           <div className='fp-custom-color-section'>
-            <span>最近</span>
+            <span>{et('最近')}</span>
             {recentColors.length > 0
-              ? <div className='fp-custom-color-grid'>{recentColors.map(color => <ColorButton key={color} color={color} active={normalizedValue === color} label={`最近使用 ${color}`} onSelect={select} />)}</div>
-              : <span className='fp-custom-color-empty'>暂无</span>}
+              ? <div className='fp-custom-color-grid'>{recentColors.map(color => <ColorButton key={color} color={color} active={normalizedValue === color} label={et('最近使用 {{color}}', { color })} onSelect={select} />)}</div>
+              : <span className='fp-custom-color-empty'>{et('暂无')}</span>}
           </div>
         </div>
       )}

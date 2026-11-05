@@ -24,6 +24,7 @@ import {
   FiType,
   FiUnderline,
 } from 'react-icons/fi'
+import { editorText, useEditorTranslation } from '../../editor-i18n'
 import { DEFAULT_FILTERS } from '../core'
 import { ColorSwatch } from './color-swatch'
 import { ArrowHeadPicker, DashPicker } from './floating-options'
@@ -64,6 +65,7 @@ function InspectorIconButton(props: {
   danger?: boolean
   onClick: () => void
 }): JSX.Element {
+  const et = useEditorTranslation()
   const Icon = props.icon
   const className = [
     'fp-inspector-icon-btn',
@@ -74,8 +76,8 @@ function InspectorIconButton(props: {
     <button
       type='button'
       className={className}
-      title={props.label}
-      aria-label={props.label}
+      title={et(props.label)}
+      aria-label={et(props.label)}
       aria-pressed={props.active}
       disabled={props.disabled}
       onClick={props.onClick}
@@ -86,7 +88,8 @@ function InspectorIconButton(props: {
 }
 
 function SectionTitle(props: { children: string }): JSX.Element {
-  return <div className='fp-inspector-section-title'>{props.children}</div>
+  const et = useEditorTranslation()
+  return <div className='fp-inspector-section-title'>{et(props.children)}</div>
 }
 
 function AlignTopIcon(): JSX.Element {
@@ -125,10 +128,11 @@ function MeasureIcon(): JSX.Element {
  * 颜色字段：字段名与当前色块，完整色板通过弹层展开。
  */
 function ColorField(props: { label: string, value: string, onChange: (color: string) => void }): JSX.Element {
+  const et = useEditorTranslation()
   return (
     <div className='fp-color-field'>
-      <span className='fp-color-field-label'>{props.label}</span>
-      <ColorSwatch label={props.label} value={props.value} onChange={props.onChange} />
+      <span className='fp-color-field-label'>{et(props.label)}</span>
+      <ColorSwatch label={et(props.label)} value={props.value} onChange={props.onChange} />
     </div>
   )
 }
@@ -156,16 +160,17 @@ function FilterSlider(props: {
   max: number
   onChange: (value: number) => void
 }): JSX.Element {
+  const et = useEditorTranslation()
   const display = Math.round(props.value * 100)
   return (
     <div className='fp-filter-field'>
       <div className='fp-filter-field-row'>
-        <span className='fp-filter-field-label'>{props.label}</span>
+        <span className='fp-filter-field-label'>{et(props.label)}</span>
         <span className='fp-filter-field-value'>{display}</span>
       </div>
       <input
         type='range'
-        aria-label={props.ariaLabel ?? props.label}
+        aria-label={et(props.ariaLabel ?? props.label)}
         min={props.min * 100}
         max={props.max * 100}
         step={1}
@@ -186,6 +191,7 @@ function FilterAdjustGroup(props: {
   onPatch: (patch: Partial<FilterSettings>) => void
   onReset: () => void
 }): JSX.Element {
+  const et = useEditorTranslation()
   const effective = props.filters ?? DEFAULT_FILTERS
   const toggles = [
     { key: 'grayscale', label: '灰度', active: effective.grayscale },
@@ -213,7 +219,7 @@ function FilterAdjustGroup(props: {
             aria-pressed={toggle.active}
             onClick={() => props.onPatch({ [toggle.key]: !toggle.active })}
           >
-            {toggle.label}
+            {et(toggle.label)}
           </button>
         ))}
       </div>
@@ -245,7 +251,8 @@ function OpacitySlider(props: { editor: Editor, objects: EditorObject[] }): JSX.
 
 /** 锁定提示（私有）：locked 单选时显示；几何类控件（NumberField）由调用方按 locked 禁用。 */
 function LockedHint(): JSX.Element {
-  return <div className='fp-props-locked-hint'>已锁定：几何类控件不可用，解锁后可编辑</div>
+  const et = useEditorTranslation()
+  return <div className='fp-props-locked-hint'>{et('已锁定：几何类控件不可用，解锁后可编辑')}</div>
 }
 
 /** 检查器标题：展示对象类型；有选中对象时在右侧提供统一删除入口。 */
@@ -255,13 +262,14 @@ function InspectorHeader(props: {
   title: string
   subtitle?: string
 }): JSX.Element {
+  const et = useEditorTranslation()
   const Icon = props.icon
   return (
     <header className={props.editor ? 'fp-inspector-header' : 'fp-inspector-header fp-inspector-header-static'}>
       <span className='fp-inspector-type-icon' aria-hidden='true'><Icon size={16} /></span>
       <span className='fp-inspector-heading'>
-        <strong>{props.title}</strong>
-        {props.subtitle && <span>{props.subtitle}</span>}
+        <strong>{et(props.title)}</strong>
+        {props.subtitle && <span>{et(props.subtitle)}</span>}
       </span>
       {props.editor && (
         <InspectorIconButton
@@ -280,12 +288,13 @@ function InspectorHeader(props: {
  * （z 序多选保持相对顺序、已在顶/底 no-op；翻转对每个选中对象取负 scale）。
  */
 function ArrangeGroups(props: { editor: Editor }): JSX.Element {
+  const et = useEditorTranslation()
   const { editor } = props
   return (
     <section className='fp-inspector-section fp-arrange-section'>
       <div className='fp-inspector-toolbar-row'>
         <SectionTitle>排列</SectionTitle>
-        <div className='fp-inspector-icon-toolbar' role='group' aria-label='排列与翻转'>
+        <div className='fp-inspector-icon-toolbar' role='group' aria-label={et('排列与翻转')}>
           <InspectorIconButton label='置顶' icon={ChevronsUpIcon} onClick={() => editor.bringToFront()} />
           <InspectorIconButton label='上移' icon={ArrowUpIcon} onClick={() => editor.bringForward()} />
           <InspectorIconButton label='下移' icon={ArrowDownIcon} onClick={() => editor.sendBackward()} />
@@ -305,6 +314,7 @@ function ArrangeGroups(props: { editor: Editor }): JSX.Element {
  * 分布需 ≥3 选中才启用（core 侧 locked 过滤后不足亦 no-op 返回 false）。
  */
 function AlignDistributeGroup(props: { editor: Editor, selectedCount: number }): JSX.Element {
+  const et = useEditorTranslation()
   const { editor, selectedCount } = props
   const aligns = [
     { edge: 'left', label: '左对齐', icon: AlignLeftIcon },
@@ -321,7 +331,7 @@ function AlignDistributeGroup(props: { editor: Editor, selectedCount: number }):
   return (
     <section className='fp-inspector-section'>
       <SectionTitle>对齐与分布</SectionTitle>
-      <div className='fp-inspector-icon-toolbar fp-inspector-align-toolbar' role='group' aria-label='对齐分布'>
+      <div className='fp-inspector-icon-toolbar fp-inspector-align-toolbar' role='group' aria-label={et('对齐分布')}>
         {aligns.map(item => (
           <InspectorIconButton
             key={item.edge}
@@ -346,6 +356,7 @@ function AlignDistributeGroup(props: { editor: Editor, selectedCount: number }):
 }
 
 function ShapePanel(props: { editor: Editor, object: ShapeObject, locked: boolean }): JSX.Element {
+  const et = useEditorTranslation()
   const { editor, object, locked } = props
   return (
     <section className='fp-inspector-section'>
@@ -355,9 +366,9 @@ function ShapePanel(props: { editor: Editor, object: ShapeObject, locked: boolea
         <ColorField label='描边' value={object.stroke} onChange={stroke => editor.changeShape({ stroke })} />
       </div>
       <div className='fp-inspector-stroke-row'>
-        <NumberField label='描边宽度' value={object.strokeWidth} min={1} max={20} disabled={locked} onChange={strokeWidth => editor.changeShape({ strokeWidth })} />
+        <NumberField label={et('描边宽度')} value={object.strokeWidth} min={1} max={20} disabled={locked} onChange={strokeWidth => editor.changeShape({ strokeWidth })} />
         <div className='fp-inspector-dash-field'>
-          <span>线型</span>
+          <span>{et('线型')}</span>
           <DashPicker value={object.strokeDash ?? []} disabled={locked} onChange={strokeDash => editor.changeShape({ strokeDash })} />
         </div>
       </div>
@@ -366,6 +377,7 @@ function ShapePanel(props: { editor: Editor, object: ShapeObject, locked: boolea
 }
 
 function TextPanel(props: { editor: Editor, object: TextObject, locked: boolean }): JSX.Element {
+  const et = useEditorTranslation()
   const { editor, object, locked } = props
   const applyObjectColor = useApplyObjectColor(object)
   // changeTextStyle 为 toggle 语义：按钮恒传目标值，active 态读对象当前值
@@ -383,16 +395,16 @@ function TextPanel(props: { editor: Editor, object: TextObject, locked: boolean 
     <>
       <section className='fp-inspector-section'>
         <label className='fp-text-field'>
-          <span className='fp-text-field-label'>文本内容</span>
-          <textarea aria-label='文本内容' value={object.text} onChange={event => editor.changeText(event.target.value)} />
+          <span className='fp-text-field-label'>{et('文本内容')}</span>
+          <textarea aria-label={et('文本内容')} value={object.text} onChange={event => editor.changeText(event.target.value)} />
         </label>
       </section>
       <section className='fp-inspector-section'>
         <SectionTitle>文字样式</SectionTitle>
         <div className='fp-inspector-text-style-row'>
-          <NumberField label='字号' value={object.fontSize} min={1} disabled={locked} onChange={fontSize => editor.changeTextStyle({ fontSize })} />
+          <NumberField label={et('字号')} value={object.fontSize} min={1} disabled={locked} onChange={fontSize => editor.changeTextStyle({ fontSize })} />
           <ColorField label='颜色' value={object.fill} onChange={applyObjectColor} />
-          <div className='fp-inspector-icon-toolbar' role='group' aria-label='文字样式'>
+          <div className='fp-inspector-icon-toolbar' role='group' aria-label={et('文字样式')}>
             {toggles.map(toggle => (
               <InspectorIconButton
                 key={toggle.label}
@@ -410,6 +422,7 @@ function TextPanel(props: { editor: Editor, object: TextObject, locked: boolean 
 }
 
 function PathPanel(props: { editor: Editor, object: PathObject, locked: boolean }): JSX.Element {
+  const et = useEditorTranslation()
   const { editor, object, locked } = props
   const applyObjectColor = useApplyObjectColor(object)
   // arrow 走 changeArrowStyle（同步头部 fill）；其余（freedraw/line）走 changeFreeDrawingPathStyle
@@ -420,9 +433,9 @@ function PathPanel(props: { editor: Editor, object: PathObject, locked: boolean 
         <SectionTitle>外观</SectionTitle>
         <div className='fp-inspector-stroke-row fp-inspector-path-style'>
           <ColorField label='颜色' value={object.stroke} onChange={applyObjectColor} />
-          <NumberField label='线宽' value={object.strokeWidth} min={1} max={20} disabled={locked} onChange={width => change.call(editor, { width })} />
+          <NumberField label={et('线宽')} value={object.strokeWidth} min={1} max={20} disabled={locked} onChange={width => change.call(editor, { width })} />
           <div className='fp-inspector-dash-field'>
-            <span>线型</span>
+            <span>{et('线型')}</span>
             <DashPicker value={object.strokeDash ?? []} disabled={locked} onChange={dash => object.tool === 'measurement' ? editor.changeMeasurementStyle({ dash }) : change.call(editor, { dash })} />
           </div>
         </div>
@@ -431,22 +444,22 @@ function PathPanel(props: { editor: Editor, object: PathObject, locked: boolean 
       {object.tool === 'arrow'
         ? (
             <section className='fp-annotation-settings'>
-              <div className='fp-annotation-heading'>箭头端点</div>
+              <div className='fp-annotation-heading'>{et('箭头端点')}</div>
               <div className='fp-property-pair'>
                 <div className='fp-option-field'>
-                  <span>起点</span>
-                  <ArrowHeadPicker label='起点' value={object.startHead ?? 'none'} onChange={startHead => editor.changeArrowStyle({ startHead })} />
+                  <span>{et('起点')}</span>
+                  <ArrowHeadPicker label={et('起点')} value={object.startHead ?? 'none'} onChange={startHead => editor.changeArrowStyle({ startHead })} />
                 </div>
                 <div className='fp-option-field'>
-                  <span>终点</span>
-                  <ArrowHeadPicker label='终点' value={object.endHead ?? 'filled'} onChange={endHead => editor.changeArrowStyle({ endHead })} />
+                  <span>{et('终点')}</span>
+                  <ArrowHeadPicker label={et('终点')} value={object.endHead ?? 'filled'} onChange={endHead => editor.changeArrowStyle({ endHead })} />
                 </div>
               </div>
               <div className='fp-property-pair'>
-                <NumberField label='头部长度' value={object.headLength ?? 20} min={1} max={500} disabled={locked} onChange={headLength => editor.changeArrowStyle({ headLength })} />
-                <NumberField label='头部宽度' value={object.headWidth ?? 20} min={1} max={500} disabled={locked} onChange={headWidth => editor.changeArrowStyle({ headWidth })} />
+                <NumberField label={et('头部长度')} value={object.headLength ?? 20} min={1} max={500} disabled={locked} onChange={headLength => editor.changeArrowStyle({ headLength })} />
+                <NumberField label={et('头部宽度')} value={object.headWidth ?? 20} min={1} max={500} disabled={locked} onChange={headWidth => editor.changeArrowStyle({ headWidth })} />
               </div>
-              <p className='fp-property-hint'>拖动圆点调整端点，菱形调整头部。</p>
+              <p className='fp-property-hint'>{et('拖动圆点调整端点，菱形调整头部。')}</p>
             </section>
           )
         : null}
@@ -455,11 +468,12 @@ function PathPanel(props: { editor: Editor, object: PathObject, locked: boolean 
 }
 
 function MosaicPanel(props: { object: MosaicObject }): JSX.Element {
+  const et = useEditorTranslation()
   return (
     <section className='fp-inspector-section'>
       <SectionTitle>信息</SectionTitle>
       <div className='fp-props-readonly'>
-        <span className='fp-props-readonly-label'>马赛克块数</span>
+        <span className='fp-props-readonly-label'>{et('马赛克块数')}</span>
         <span className='fp-props-readonly-value'>{props.object.rects.length}</span>
       </div>
     </section>
@@ -467,13 +481,14 @@ function MosaicPanel(props: { object: MosaicObject }): JSX.Element {
 }
 
 function ImagePanel(props: { editor: Editor, object: ImageObject }): JSX.Element {
+  const et = useEditorTranslation()
   const { editor, object } = props
   return (
     <>
       <section className='fp-inspector-section'>
         <SectionTitle>信息</SectionTitle>
         <div className='fp-props-readonly'>
-          <span className='fp-props-readonly-label'>尺寸</span>
+          <span className='fp-props-readonly-label'>{et('尺寸')}</span>
           <span className='fp-props-readonly-value'>
             {object.width}
             {' '}
@@ -509,7 +524,7 @@ function objectPresentation(object: EditorObject): { icon: JSX.ElementType, titl
       if (object.tool === 'line')
         return { icon: LineIcon, title: '直线' }
       if (object.tool === 'measurement')
-        return { icon: MeasureIcon, title: `${({ line: '直线', angle: '角度', polygon: '多边形', ellipse: '椭圆' })[object.measurementKind ?? 'line']}测量` }
+        return { icon: MeasureIcon, title: editorText(({ line: '直线测量', angle: '角度测量', polygon: '多边形测量', ellipse: '椭圆测量' })[object.measurementKind ?? 'line']) }
       return { icon: EditIcon, title: '画笔' }
   }
 }
@@ -527,6 +542,7 @@ function objectPresentation(object: EditorObject): { icon: JSX.ElementType, titl
  * 单选 locked 对象时显示「已锁定」提示并禁用几何类控件（描边宽度/字号/线宽）。
  */
 export function PropertiesPanel(props: { className?: string }): JSX.Element {
+  const et = useEditorTranslation()
   const editor = useEditor()
   const selection = useEditorState(state => state.selection)
   const objects = useEditorState(state => state.doc.objects)
@@ -543,15 +559,15 @@ export function PropertiesPanel(props: { className?: string }): JSX.Element {
           <SectionTitle>文档</SectionTitle>
           <div className='fp-inspector-facts'>
             <div className='fp-props-readonly'>
-              <span className='fp-props-readonly-label'>缩放</span>
+              <span className='fp-props-readonly-label'>{et('缩放')}</span>
               <span className='fp-props-readonly-value'>{zoomText}</span>
             </div>
             <div className='fp-props-readonly'>
-              <span className='fp-props-readonly-label'>背景</span>
-              <span className='fp-props-readonly-value'>{background !== null ? `${Number(background.width.toFixed(2))} × ${Number(background.height.toFixed(2))}` : '未加载图片'}</span>
+              <span className='fp-props-readonly-label'>{et('背景')}</span>
+              <span className='fp-props-readonly-value'>{background !== null ? `${Number(background.width.toFixed(2))} × ${Number(background.height.toFixed(2))}` : et('未加载图片')}</span>
             </div>
             <div className='fp-props-readonly'>
-              <span className='fp-props-readonly-label'>对象数</span>
+              <span className='fp-props-readonly-label'>{et('对象数')}</span>
               <span className='fp-props-canvas-count'>{objects.length}</span>
             </div>
           </div>
@@ -570,7 +586,7 @@ export function PropertiesPanel(props: { className?: string }): JSX.Element {
   else if (selected.length > 1) {
     content = (
       <div className='fp-props-multi'>
-        <InspectorHeader editor={editor} icon={LayersIcon} title='多个图层' subtitle={`已选 ${selected.length} 个对象`} />
+        <InspectorHeader editor={editor} icon={LayersIcon} title='多个图层' subtitle={et('已选 {{count}} 个对象', { count: selected.length })} />
         <AlignDistributeGroup editor={editor} selectedCount={selected.length} />
         <ArrangeGroups editor={editor} />
         <OpacitySlider editor={editor} objects={selected} />

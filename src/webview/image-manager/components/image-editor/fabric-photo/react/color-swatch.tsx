@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useEditorTranslation } from '../../editor-i18n'
 import { ColorPalette } from './color-palette'
 import './annotation-properties.css'
 
 export function ColorSwatch(props: { label: string, value: string, onChange: (color: string) => void }) {
+  const et = useEditorTranslation()
   const button = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{ left: number, top: number } | null>(null)
@@ -36,7 +38,7 @@ export function ColorSwatch(props: { label: string, value: string, onChange: (co
         ref={button}
         type='button'
         className='fp-current-color'
-        aria-label={`${props.label}颜色选择`}
+        aria-label={et('{{label}}颜色选择', { label: props.label })}
         aria-expanded={Boolean(position)}
         title={`${props.label} · ${props.value}`}
         onClick={() => {
@@ -49,7 +51,7 @@ export function ColorSwatch(props: { label: string, value: string, onChange: (co
         <svg viewBox='0 0 12 12' width='12' height='12' aria-hidden='true'><path d='m3 4.5 3 3 3-3' stroke='currentColor' fill='none' /></svg>
       </button>
       {position && createPortal(
-        <div ref={menu} role='dialog' aria-label={`${props.label}色板`} className='fp-color-popover fp-color-popover-v2' style={position}>
+        <div ref={menu} role='dialog' aria-label={et('{{label}}色板', { label: props.label })} className='fp-color-popover fp-color-popover-v2' style={position}>
           <div className='fp-color-popover-title'>
             <span>{props.label}</span>
             <code>{props.value}</code>

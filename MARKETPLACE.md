@@ -64,6 +64,12 @@ Default shortcut: `Shift+Alt+J` on Windows / Linux; `Cmd+Alt+J` on macOS.
 
 Settings include scan formats, exclusions, appearance and language. Light and dark themes are supported, with English, Simplified Chinese, Traditional Chinese, Japanese and German interfaces.
 
+Select **English** or **Simplified Chinese** using
+`image-manager.appearance.language` for complete editor translations, including
+tools, properties, colors and measurement labels. Switching languages keeps the
+current edits, custom names and existing text. Additional languages use English
+fallbacks for the new editor labels.
+
 Some image operations require sharp / libvips. When dependency installation is enabled, the extension can install this backend; the first installation may require network access. Available formats depend on the backend.
 
 Project source and acknowledgments are available in the linked GitHub repository. License and third-party notices are included in the extension package.

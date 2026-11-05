@@ -57,6 +57,8 @@ Image Manager Pro 将工作区图片管理与图片编辑器集成到 VS Code，
 
 打开工作区后，在命令面板运行 **Image Manager Pro**，也可通过文件夹右键菜单打开。默认快捷键为 Windows/Linux 的 `Shift+Alt+J`、macOS 的 `Cmd+Alt+J`。
 
+在扩展设置中将语言（`image-manager.appearance.language`）设为 **English** 或 **简体中文**，即可切换界面语言。编辑器工具、属性、颜色面板及测量标注会即时更新，并保留当前编辑状态；自定义名称和已有文字保持原文。
+
 图片处理使用 Sharp 及对应平台的原生依赖。扩展可在需要时下载这些依赖，首次配置需要网络连接；可处理和转换的格式取决于可用的原生编解码器。NPY 与原始二进制格式需要匹配的数据及解码设置。
 
 打包和发布步骤见 [RELEASING.md](./RELEASING.md)。

@@ -3,6 +3,7 @@ import type { ExportImageOptions } from '../core'
 import type { SegmentedOption } from './segmented'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FiDownload, FiMoon, FiRotateCcw, FiRotateCw, FiSun, FiX } from 'react-icons/fi'
+import { useEditorTranslation } from '../../editor-i18n'
 import { EditorActionsContext } from './context'
 import { useEditor, useEditorEvent, useEditorState, useTheme } from './hooks'
 import { SegmentedControl } from './segmented'
@@ -39,6 +40,7 @@ const CloseIcon = FiX as unknown as JSX.ElementType
  * core toDataURL → a[download=<图名>-<宽>x<高>@<倍率>x[-selection].<ext>] 并点击。
  */
 export function TopBar(props: { className?: string, pixelReadout?: ReactNode, onExport?: (options: ExportImageOptions) => void }): JSX.Element {
+  const et = useEditorTranslation()
   const actions = useContext(EditorActionsContext)
   const editor = useEditor()
   const { theme, toggleTheme } = useTheme()
@@ -137,8 +139,8 @@ export function TopBar(props: { className?: string, pixelReadout?: ReactNode, on
         <button
           type='button'
           className='fp-topbar-btn'
-          title='撤销'
-          aria-label='撤销'
+          title={et('撤销')}
+          aria-label={et('撤销')}
           disabled={undoDisabled}
           onClick={() => editor.undo()}
         >
@@ -147,8 +149,8 @@ export function TopBar(props: { className?: string, pixelReadout?: ReactNode, on
         <button
           type='button'
           className='fp-topbar-btn'
-          title='重做'
-          aria-label='重做'
+          title={et('重做')}
+          aria-label={et('重做')}
           disabled={redoDisabled}
           onClick={() => editor.redo()}
         >
@@ -161,8 +163,8 @@ export function TopBar(props: { className?: string, pixelReadout?: ReactNode, on
         <button
           type='button'
           className='fp-topbar-btn'
-          title='切换主题'
-          aria-label='切换主题'
+          title={et('切换主题')}
+          aria-label={et('切换主题')}
           onClick={toggleTheme}
         >
           {theme === 'dark' ? <SunIcon size={18} aria-hidden /> : <MoonIcon size={18} aria-hidden />}
@@ -172,29 +174,29 @@ export function TopBar(props: { className?: string, pixelReadout?: ReactNode, on
           <button
             type='button'
             className='fp-topbar-btn'
-            title='导出'
-            aria-label='导出'
+            title={et('导出')}
+            aria-label={et('导出')}
             aria-expanded={exportOpen}
             onClick={() => setExportOpen(open => !open)}
           >
             <DownloadIcon size={18} aria-hidden />
           </button>
           {exportOpen && (
-            <div className='fp-export-panel' role='dialog' aria-label='导出设置'>
-              <span className='fp-export-label'>格式</span>
+            <div className='fp-export-panel' role='dialog' aria-label={et('导出设置')}>
+              <span className='fp-export-label'>{et('格式')}</span>
               <SegmentedControl
-                ariaLabel='格式'
+                ariaLabel={et('格式')}
                 options={FORMAT_OPTIONS}
                 value={format}
                 onChange={setFormat}
               />
               {format !== 'png' && (
                 <>
-                  <span className='fp-export-label'>质量</span>
+                  <span className='fp-export-label'>{et('质量')}</span>
                   <div className='fp-export-row'>
                     <input
                       type='range'
-                      aria-label='质量'
+                      aria-label={et('质量')}
                       min={QUALITY_MIN}
                       max={QUALITY_MAX}
                       step={QUALITY_STEP}
@@ -205,32 +207,32 @@ export function TopBar(props: { className?: string, pixelReadout?: ReactNode, on
                   </div>
                 </>
               )}
-              <span className='fp-export-label'>倍率</span>
+              <span className='fp-export-label'>{et('倍率')}</span>
               <SegmentedControl
-                ariaLabel='倍率'
+                ariaLabel={et('倍率')}
                 options={MULTIPLIERS.map(m => ({ value: m, label: `${m}x` }))}
                 value={multiplier}
                 onChange={setMultiplier}
               />
-              <span className='fp-export-label'>范围</span>
+              <span className='fp-export-label'>{et('范围')}</span>
               <SegmentedControl
-                ariaLabel='范围'
+                ariaLabel={et('范围')}
                 options={
                                     [
-                                      { value: 'full', label: '整图' },
-                                      { value: 'selection', label: '仅选中', disabled: !hasSelection },
+                                      { value: 'full', label: et('整图') },
+                                      { value: 'selection', label: et('仅选中'), disabled: !hasSelection },
                                     ] as const satisfies readonly SegmentedOption<'full' | 'selection'>[]
                 }
                 value={scope}
                 onChange={setScope}
               />
               <button type='button' className='fp-export-confirm' onClick={handleExport}>
-                导出
+                {et('导出')}
               </button>
             </div>
           )}
         </div>
-        <button type='button' className='fp-topbar-btn' title='关闭' aria-label='关闭' onClick={() => document.dispatchEvent(new CustomEvent('image-editor-close'))}>
+        <button type='button' className='fp-topbar-btn' title={et('关闭')} aria-label={et('关闭')} onClick={() => document.dispatchEvent(new CustomEvent('image-editor-close'))}>
           <CloseIcon size={18} viewBox='3 3 18 18' strokeWidth={1.5} aria-hidden />
         </button>
       </div>

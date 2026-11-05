@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from 'react'
 import type { EditorState, ExportImageOptions } from '../core'
 import { useEffect, useRef, useState } from 'react'
+import { useEditorLanguage } from '../../editor-i18n'
 import { Editor } from '../core'
 import { CanvasView } from './canvas-view'
 import { FloatingOptions } from './floating-options'
@@ -59,7 +60,11 @@ export function FabricPhotoEditor(props: FabricPhotoEditorProps): JSX.Element {
   const { src, imageName = 'image', cssMaxWidth, cssMaxHeight, onReady, onChange, className, canvasOverlay, sidePanel, topbarActions, children } = props
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null)
   const [editor, setEditor] = useState<Editor | null>(null)
+  const language = useEditorLanguage()
   const themeState = useThemeState()
+  useEffect(() => {
+    editor?.refreshLabels()
+  }, [editor, language])
   // latest-ref：回调身份变化不触发 Editor 重建
   const onReadyRef = useRef(onReady)
   onReadyRef.current = onReady

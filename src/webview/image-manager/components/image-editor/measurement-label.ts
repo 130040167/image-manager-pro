@@ -1,5 +1,6 @@
 import type { PathObject } from './fabric-photo/core/model/doc'
 import type { Point } from './measurement'
+import { editorText } from './editor-i18n'
 import { measureAngle, measureEllipsePoints, measureLine, measurePolygonArea, measurePolygonPerimeter } from './measurement'
 
 export function measurementLabelSettings(object: PathObject) {
@@ -33,11 +34,28 @@ export function measurementLabelFontFamily(fontFamily: ReturnType<typeof measure
   }
 }
 
+export function measurementDefaultName(object: PathObject) {
+  const name = object.measurementName
+  if (!name || name === '测量')
+    return editorText('测量')
+  const automatic = /^测量-(直线|多边形|椭圆|角度)(\d+)$/.exec(name)
+  if (!automatic)
+    return name
+  const sources: Record<string, string> = {
+    直线: '测量-直线{{index}}',
+    多边形: '测量-多边形{{index}}',
+    椭圆: '测量-椭圆{{index}}',
+    角度: '测量-角度{{index}}',
+  }
+  const source = sources[automatic[1]]
+  return source ? editorText(source, { index: automatic[2] }) : name
+}
+
 export function measurementDisplayName(object: PathObject) {
   const settings = measurementLabelSettings(object)
   return settings.nameMode === 'custom' && settings.customName.trim()
     ? settings.customName.trim()
-    : object.measurementName ?? '测量'
+    : measurementDefaultName(object)
 }
 
 export interface MeasurementValueDetail {
@@ -53,19 +71,19 @@ export function measurementValueDetails(object: PathObject, points = object.meas
   const showPerimeter = options.respectCanvasVisibility !== true || settings.showPerimeter
   const showArea = options.respectCanvasVisibility !== true || settings.showArea
   switch (object.measurementKind) {
-    case 'angle': return [{ label: '角度', value: format(measureAngle(points)), unit: '°' }]
+    case 'angle': return [{ label: editorText('角度'), value: format(measureAngle(points)), unit: '°' }]
     case 'ellipse': {
       const ellipse = measureEllipsePoints(points)
       return [
-        ...(showPerimeter ? [{ label: '周长', value: format(ellipse.perimeter), unit: 'px' }] : []),
-        ...(showArea ? [{ label: '面积', value: format(ellipse.area), unit: 'px²' }] : []),
+        ...(showPerimeter ? [{ label: editorText('周长'), value: format(ellipse.perimeter), unit: 'px' }] : []),
+        ...(showArea ? [{ label: editorText('面积'), value: format(ellipse.area), unit: 'px²' }] : []),
       ]
     }
     case 'polygon': return [
-      ...(showPerimeter ? [{ label: '周长', value: format(measurePolygonPerimeter(points)), unit: 'px' }] : []),
-      ...(showArea ? [{ label: '面积', value: format(measurePolygonArea(points)), unit: 'px²' }] : []),
+      ...(showPerimeter ? [{ label: editorText('周长'), value: format(measurePolygonPerimeter(points)), unit: 'px' }] : []),
+      ...(showArea ? [{ label: editorText('面积'), value: format(measurePolygonArea(points)), unit: 'px²' }] : []),
     ]
-    default: return [{ label: '长度', value: format(measureLine(points)), unit: 'px' }]
+    default: return [{ label: editorText('长度'), value: format(measureLine(points)), unit: 'px' }]
   }
 }
 
@@ -132,7 +150,7 @@ export function measurementMetricDisplayName(object: PathObject, kind: Measureme
   const settings = measurementMetricLabelSettings(object, kind)
   return settings.nameMode === 'custom' && settings.customName.trim()
     ? settings.customName.trim()
-    : kind === 'perimeter' ? '周长' : '面积'
+    : editorText(kind === 'perimeter' ? '周长' : '面积')
 }
 
 export interface MeasurementCanvasLabelLayout {
@@ -178,8 +196,9 @@ export function measurementCanvasLabelLayouts(object: PathObject, points = objec
   }
   const rows = measurementValueDetails(object, points)
   const layouts: MeasurementCanvasLabelLayout[] = []
-  for (const { label, value } of rows) {
-    const kind: MeasurementMetricKind = label === '周长' ? 'perimeter' : 'area'
+  for (const [index, { value }] of rows.entries()) {
+    // Metric order is stable; translated labels must never identify geometry.
+    const kind: MeasurementMetricKind = index === 0 ? 'perimeter' : 'area'
     const settings = measurementMetricLabelSettings(object, kind)
     if (!settings.visible)
       continue

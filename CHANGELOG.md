@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [3.3.11] - 2026-11-06
+
+### Improvements
+
+- Complete Chinese and English translations for editor tools, export controls,
+  layers, colors, filters, properties and measurement annotations.
+- Refresh editor labels when the language changes while preserving edits,
+  undo history, custom measurement names and existing text.
+
 ## [3.3.10] - 2025-08-13
 
 ### Fix

@@ -7,6 +7,7 @@ import type { Renderer } from './render/renderer'
 import type { EditorMode, Viewport } from './state/editor-state'
 import type { ObjectAttrs } from './steps/object-steps'
 import type { ReorderAction } from './steps/reorder-objects-step'
+import { editorText } from '../../editor-i18n'
 import { normalizeValueRange } from '../../histogram-range'
 import { buildMeasurementPath } from '../../measurement'
 import { Emitter } from './events'
@@ -1425,7 +1426,7 @@ export class Editor {
       left = info.left + info.width / 2
       top = info.top + info.height / 2
     }
-    const object = createTextObject(text ?? DEFAULT_TEXT, left, top, options?.styles)
+    const object = createTextObject(text ?? editorText(DEFAULT_TEXT), left, top, options?.styles)
     const tr = this.newTransaction().addStep(new AddObject(object)).setSelection([object.id])
     if (this.currentState.mode !== 'text') {
       tr.setMode('text')
@@ -1567,6 +1568,10 @@ export class Editor {
    */
   notifyResize(): void {
     this.renderer?.notifyResize()
+  }
+
+  refreshLabels(): void {
+    this.fabricRenderer?.canvas.requestRenderAll()
   }
 
   /**

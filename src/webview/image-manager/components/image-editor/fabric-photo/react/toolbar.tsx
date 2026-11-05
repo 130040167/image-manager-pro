@@ -9,6 +9,7 @@ import {
   FiRotateCw,
   FiType,
 } from 'react-icons/fi'
+import { useEditorTranslation } from '../../editor-i18n'
 import { useEditor, useEditorState, useToolSettings } from './hooks'
 import { activateTool, modeToTool } from './tool-settings'
 
@@ -64,6 +65,7 @@ export const TOOLS: ToolDef[] = [
  * 再次点击已激活的 mode 工具 → editor.endAll() 回 normal。
  */
 export function Toolbar(props: { className?: string, measureActive?: boolean }): JSX.Element {
+  const et = useEditorTranslation()
   const editor = useEditor()
   const { toolSettings } = useToolSettings()
   const activeTool = useEditorState(state => modeToTool(state.mode))
@@ -93,7 +95,7 @@ export function Toolbar(props: { className?: string, measureActive?: boolean }):
             key={tool.id}
             type='button'
             className={btnClassName}
-            title={tool.shortcut === undefined ? tool.label : `${tool.label} (${tool.shortcut})`}
+            title={tool.shortcut === undefined ? et(tool.label) : `${et(tool.label)} (${tool.shortcut})`}
             aria-pressed={isActive}
             onClick={() => handleClick(tool)}
             onContextMenu={(event) => {
@@ -105,7 +107,7 @@ export function Toolbar(props: { className?: string, measureActive?: boolean }):
             }}
           >
             <Icon size={18} aria-hidden />
-            <span className='fp-tool-btn-label'>{tool.label}</span>
+            <span className='fp-tool-btn-label'>{et(tool.label)}</span>
           </button>
         )
       })}

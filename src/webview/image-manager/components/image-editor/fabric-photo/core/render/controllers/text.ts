@@ -2,6 +2,7 @@ import type { FabricObject, TPointerEventInfo } from 'fabric'
 import type { TextObject } from '../../model/doc'
 import type { Controller, ControllerContext } from './controller'
 import { IText } from 'fabric'
+import { editorText } from '../../../../editor-i18n'
 import { createId } from '../../model/id'
 import { AddObject, RemoveObject, UpdateObject } from '../../steps/object-steps'
 import { Transaction } from '../../transform/transaction'
@@ -141,7 +142,7 @@ export class TextController implements Controller {
       return // 命中已有对象（文本），等双击进入编辑
     }
     const { x, y } = event.scenePoint
-    const object = createTextObject(DEFAULT_TEXT, x, y)
+    const object = createTextObject(editorText(DEFAULT_TEXT), x, y)
     ctx.dispatch(new Transaction(ctx.getState()).addStep(new AddObject(object)).setSelection([object.id]))
     ctx.fire('objectAdded', { object })
     this.editObject(object.id)

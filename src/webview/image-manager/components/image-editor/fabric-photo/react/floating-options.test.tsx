@@ -129,7 +129,7 @@ describe('floatingOptions', () => {
     })
     expect(editor.getCurrentState()).toBe('crop')
 
-    fireEvent.click(utils.getByText('Apply'))
+    fireEvent.click(utils.getByText('应用'))
     expect(spy).toHaveBeenLastCalledWith(true)
     expect(editor.getCurrentState()).toBe('normal')
 
@@ -137,7 +137,7 @@ describe('floatingOptions', () => {
     act(() => {
       editor.startCropping()
     })
-    fireEvent.click(utils.getByText('Cancel'))
+    fireEvent.click(utils.getByText('取消'))
     expect(spy).toHaveBeenLastCalledWith(false)
     expect(editor.getCurrentState()).toBe('normal')
     editor.destroy()
