@@ -1,0 +1,21 @@
+.collapse {
+  :global {
+    .ant-collapse-borderless {
+      .ant-collapse-header {
+        @apply !rounded-ant-border-radius-lg;
+        &:hover {
+          @apply bg-ant-control-item-bg-hover;
+        }
+      }
+    }
+    .ant-collapse-header {
+      @apply relative !rounded-b-none !rounded-t-ant-border-radius-lg;
+      &:hover {
+        @apply bg-ant-control-item-bg-hover;
+      }
+    }
+    .ant-collapse-content-box {
+      @apply !py-ant-padding-xs;
+    }
+  }
+}

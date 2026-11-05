@@ -1,0 +1,459 @@
+import type { ShapeObject } from '../core'
+import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { AddObject, createId, Editor, SetBackground } from '../core'
+import { EditorProvider } from './provider'
+import { TopBar } from './top-bar'
+
+// —— 真实无头 Editor（不触碰 fabric）：TopBar 通过 EditorProvider 注入，
+// spy 直接打在实例方法上验证委托路径；toDataURL 无头会抛（无 FabricRenderer），导出用例打 mock。 ——
+
+beforeAll(() => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+})
+
+// vitest 未开 globals，testing-library 自动清理未注册；getBy* 绑定 document.body，需手动清理
+afterEach(() => {
+  cleanup()
+})
+
+function renderWithEditor(editor: Editor): ReturnType<typeof render> {
+  return render(
+    <EditorProvider editor={editor}>
+      <TopBar />
+    </EditorProvider>,
+  )
+}
+
+function makeShape(): ShapeObject {
+  return {
+    id: createId(),
+    kind: 'shape',
+    shapeType: 'rect',
+    left: 10,
+    top: 10,
+    angle: 0,
+    scaleX: 1,
+    scaleY: 1,
+    width: 20,
+    height: 20,
+    fill: '#ff0000',
+    stroke: '#000000',
+    strokeWidth: 1,
+  }
+}
+
+function button(utils: ReturnType<typeof render>, name: string): HTMLButtonElement {
+  return utils.getByRole('button', { name }) as HTMLButtonElement
+}
+
+describe('topBar', () => {
+  it('shows pixel readout beside the image name and includes title-bar zoom controls', () => {
+    const editor = new Editor()
+    const utils = render(
+      <EditorProvider editor={editor}>
+        <TopBar pixelReadout='(12, 8) R:10 G:20 B:30' />
+      </EditorProvider>,
+    )
+
+    expect(utils.container.querySelector('.fp-topbar-title')?.textContent).toContain('(12, 8) R:10 G:20 B:30')
+    expect(utils.container.querySelector('.fp-topbar > .fp-zoom-controls')).not.toBeNull()
+    editor.destroy()
+  })
+
+  it('初始 undo/redo 均 disabled；dispatch 一笔 AddObject 后 undo 可用、redo 仍 disabled', () => {
+    const editor = new Editor()
+    const utils = renderWithEditor(editor)
+
+    expect(button(utils, '撤销').disabled).toBe(true)
+    expect(button(utils, '重做').disabled).toBe(true)
+
+    act(() => {
+      editor.dispatch(editor.newTransaction().addStep(new AddObject(makeShape())))
+    })
+
+    expect(button(utils, '撤销').disabled).toBe(false)
+    expect(button(utils, '重做').disabled).toBe(true)
+    editor.destroy()
+  })
+
+  it('undo 后再无 undo 入账时 redo 变为可用', () => {
+    const editor = new Editor()
+    const utils = renderWithEditor(editor)
+
+    act(() => {
+      editor.dispatch(editor.newTransaction().addStep(new AddObject(makeShape())))
+    })
+    act(() => {
+      editor.undo()
+    })
+
+    expect(button(utils, '撤销').disabled).toBe(true)
+    expect(button(utils, '重做').disabled).toBe(false)
+    editor.destroy()
+  })
+
+  it('点击撤销按钮委托 editor.undo；点击重做按钮委托 editor.redo', () => {
+    const editor = new Editor()
+    const undoSpy = vi.spyOn(editor, 'undo')
+    const redoSpy = vi.spyOn(editor, 'redo')
+    const utils = renderWithEditor(editor)
+
+    act(() => {
+      editor.dispatch(editor.newTransaction().addStep(new AddObject(makeShape())))
+    })
+    fireEvent.click(button(utils, '撤销'))
+    expect(undoSpy).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(button(utils, '重做'))
+    expect(redoSpy).toHaveBeenCalledTimes(1)
+    editor.destroy()
+  })
+
+  it('无图时图名为空；dispatch SetBackground（带 name）后显示该 name', () => {
+    const editor = new Editor()
+    const utils = renderWithEditor(editor)
+
+    const nameEl = utils.container.querySelector('.fp-topbar-name') as HTMLElement
+    expect(nameEl).not.toBeNull()
+    expect(nameEl.textContent).toBe('')
+
+    act(() => {
+      editor.dispatch(
+        editor
+          .newTransaction()
+          .addStep(new SetBackground({ src: 'data:image/png;base64,x', width: 100, height: 80, name: 'photo.png', angle: 0 })),
+      )
+    })
+    expect(nameEl.textContent).toBe('photo.png')
+    editor.destroy()
+  })
+
+  it('点击导出打开弹层；再点导出 / Esc / 点外部关闭', () => {
+    const editor = new Editor()
+    const utils = renderWithEditor(editor)
+
+    expect(utils.queryByRole('dialog', { name: '导出设置' })).toBeNull()
+
+    // 弹层内有同名「导出」确认按钮，触发按钮以 aria-expanded 区分
+    const trigger = (expanded: boolean): HTMLElement =>
+      utils.getByRole('button', { name: '导出', expanded })
+
+    fireEvent.click(trigger(false))
+    expect(utils.getByRole('dialog', { name: '导出设置' })).not.toBeNull()
+
+    // 再点触发按钮关闭
+    fireEvent.click(trigger(true))
+    expect(utils.queryByRole('dialog', { name: '导出设置' })).toBeNull()
+
+    // Esc 关闭
+    fireEvent.click(trigger(false))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(utils.queryByRole('dialog', { name: '导出设置' })).toBeNull()
+
+    // 点外部关闭；点面板内部不关闭
+    fireEvent.click(trigger(false))
+    fireEvent.mouseDown(utils.getByRole('dialog', { name: '导出设置' }))
+    expect(utils.queryByRole('dialog', { name: '导出设置' })).not.toBeNull()
+    fireEvent.mouseDown(document.body)
+    expect(utils.queryByRole('dialog', { name: '导出设置' })).toBeNull()
+    editor.destroy()
+  })
+
+  it('格式切 JPEG/WebP 显示质量滑杆（默认 0.9），切回 PNG 隐藏', () => {
+    const editor = new Editor()
+    const utils = renderWithEditor(editor)
+
+    fireEvent.click(button(utils, '导出'))
+    expect(utils.queryByRole('slider', { name: '质量' })).toBeNull()
+
+    const jpeg = utils.getByRole('radio', { name: 'JPEG' })
+    fireEvent.click(jpeg)
+    expect(jpeg.getAttribute('aria-checked')).toBe('true')
+    expect(utils.getByRole('radio', { name: 'PNG' }).getAttribute('aria-checked')).toBe('false')
+    const slider = utils.getByRole('slider', { name: '质量' }) as HTMLInputElement
+    expect(slider.value).toBe('0.9')
+    expect(slider.min).toBe('0.1')
+    expect(slider.max).toBe('1')
+    expect(slider.step).toBe('0.05')
+
+    fireEvent.click(utils.getByRole('radio', { name: 'WEBP' }))
+    expect(utils.queryByRole('slider', { name: '质量' })).not.toBeNull()
+
+    fireEvent.click(utils.getByRole('radio', { name: 'PNG' }))
+    expect(utils.queryByRole('slider', { name: '质量' })).toBeNull()
+    editor.destroy()
+  })
+
+  it('无选中时「仅选中」禁用；有选中后可用', () => {
+    const editor = new Editor()
+    const utils = renderWithEditor(editor)
+
+    fireEvent.click(button(utils, '导出'))
+    const scopeRadio = (): HTMLButtonElement =>
+      utils.getByRole('radio', { name: '仅选中' }) as HTMLButtonElement
+    expect(scopeRadio().disabled).toBe(true)
+
+    const shape = makeShape()
+    act(() => {
+      editor.dispatch(editor.newTransaction().addStep(new AddObject(shape)))
+    })
+    act(() => {
+      editor.selectObjects([shape.id])
+    })
+    expect(scopeRadio().disabled).toBe(false)
+    editor.destroy()
+  })
+
+  it('默认参数确认导出 → toDataURL 收 PNG/1x/整图，a[download=<图名>-100x80@1x.png]', () => {
+    const editor = new Editor()
+    const dataSpy = vi.spyOn(editor, 'toDataURL').mockReturnValue('data:image/png;base64,xxx')
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    const utils = renderWithEditor(editor)
+
+    act(() => {
+      editor.dispatch(
+        editor
+          .newTransaction()
+          .addStep(new SetBackground({ src: 'data:image/png;base64,x', width: 100, height: 80, name: 'photo.png', angle: 0 })),
+      )
+    })
+    fireEvent.click(button(utils, '导出'))
+    // 确认按钮与触发按钮同名「导出」，限定在弹层内取
+    fireEvent.click(within(utils.getByRole('dialog', { name: '导出设置' })).getByRole('button', { name: '导出' }))
+
+    expect(dataSpy).toHaveBeenCalledTimes(1)
+    expect(dataSpy).toHaveBeenCalledWith({ type: 'image/png', multiplier: 1, selectionOnly: false })
+    expect(clickSpy).toHaveBeenCalledTimes(1)
+    const anchor = clickSpy.mock.instances[0] as HTMLAnchorElement
+    expect(anchor.download).toBe('photo-100x80@1x.png')
+    expect(anchor.href).toBe('data:image/png;base64,xxx')
+    // 导出后弹层关闭
+    expect(utils.queryByRole('dialog', { name: '导出设置' })).toBeNull()
+    clickSpy.mockRestore()
+    editor.destroy()
+  })
+
+  it('jPEG + 改质量 + 2x + 仅选中 → toDataURL 收 quality/multiplier/selectionOnly，文件名带 -selection', () => {
+    const editor = new Editor()
+    const dataSpy = vi.spyOn(editor, 'toDataURL').mockReturnValue('data:image/jpeg;base64,yyy')
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    const utils = renderWithEditor(editor)
+
+    let shapeId = ''
+    act(() => {
+      const shape = makeShape()
+      shapeId = shape.id
+      editor.dispatch(
+        editor
+          .newTransaction()
+          .addStep(new SetBackground({ src: 'data:image/png;base64,x', width: 100, height: 80, name: 'photo.png', angle: 0 }))
+          .addStep(new AddObject(shape)),
+      )
+    })
+    act(() => {
+      editor.selectObjects([shapeId])
+    })
+
+    fireEvent.click(button(utils, '导出'))
+    fireEvent.click(utils.getByRole('radio', { name: 'JPEG' }))
+    fireEvent.change(utils.getByRole('slider', { name: '质量' }), { target: { value: '0.5' } })
+    fireEvent.click(utils.getByRole('radio', { name: '2x' }))
+    fireEvent.click(utils.getByRole('radio', { name: '仅选中' }))
+    fireEvent.click(within(utils.getByRole('dialog', { name: '导出设置' })).getByRole('button', { name: '导出' }))
+
+    expect(dataSpy).toHaveBeenCalledWith({ type: 'image/jpeg', quality: 0.5, multiplier: 2, selectionOnly: true })
+    const anchor = clickSpy.mock.instances[0] as HTMLAnchorElement
+    // makeShape：left/top 10、width/height 20 → bbox 20x20，×2 = 40x40
+    expect(anchor.download).toBe('photo-40x40@2x-selection.jpeg')
+    clickSpy.mockRestore()
+    editor.destroy()
+  })
+
+  it('点击「切换主题」：toggleTheme 被调（经 context），按钮图标随 theme 变化', () => {
+    const editor = new Editor()
+    const utils = renderWithEditor(editor)
+
+    const toggle = button(utils, '切换主题')
+    // 初值 light（jsdom 无 matchMedia）→ 显示 Moon（切到暗色）
+    expect(toggle.querySelector('svg')).not.toBeNull()
+    act(() => {
+      fireEvent.click(toggle)
+    })
+    expect(localStorage.getItem('fp-theme')).toBe('dark')
+    editor.destroy()
+    localStorage.clear()
+  })
+
+  describe('导出弹层 segmented 键盘导航', () => {
+    const radio = (utils: ReturnType<typeof render>, name: string): HTMLButtonElement =>
+      utils.getByRole('radio', { name }) as HTMLButtonElement
+    const openPanel = (utils: ReturnType<typeof render>): void => {
+      fireEvent.click(button(utils, '导出'))
+    }
+    const withSelection = (editor: Editor): void => {
+      const shape = makeShape()
+      act(() => {
+        editor.dispatch(editor.newTransaction().addStep(new AddObject(shape)))
+      })
+      act(() => {
+        editor.selectObjects([shape.id])
+      })
+    }
+
+    it('roving tabindex：每组选中项 0、其余 -1（三组各自独立）', () => {
+      const editor = new Editor()
+      const utils = renderWithEditor(editor)
+      openPanel(utils)
+
+      expect(radio(utils, 'PNG').tabIndex).toBe(0)
+      expect(radio(utils, 'JPEG').tabIndex).toBe(-1)
+      expect(radio(utils, 'WEBP').tabIndex).toBe(-1)
+      expect(radio(utils, '1x').tabIndex).toBe(0)
+      expect(radio(utils, '2x').tabIndex).toBe(-1)
+      expect(radio(utils, '3x').tabIndex).toBe(-1)
+      expect(radio(utils, '整图').tabIndex).toBe(0)
+      expect(radio(utils, '仅选中').tabIndex).toBe(-1)
+      editor.destroy()
+    })
+
+    it('arrowRight 移动即选中：焦点、aria-checked、tabIndex 同步到下一项', () => {
+      const editor = new Editor()
+      const utils = renderWithEditor(editor)
+      openPanel(utils)
+
+      const png = radio(utils, 'PNG')
+      png.focus()
+      fireEvent.keyDown(png, { key: 'ArrowRight', code: 'ArrowRight' })
+
+      const jpeg = radio(utils, 'JPEG')
+      expect(jpeg.getAttribute('aria-checked')).toBe('true')
+      expect(radio(utils, 'PNG').getAttribute('aria-checked')).toBe('false')
+      expect(document.activeElement).toBe(jpeg)
+      expect(jpeg.tabIndex).toBe(0)
+      expect(radio(utils, 'PNG').tabIndex).toBe(-1)
+      // 与点击该按钮等效：切到 JPEG 出现质量滑杆
+      expect(utils.getByRole('slider', { name: '质量' })).not.toBeNull()
+      editor.destroy()
+    })
+
+    it('末项 ArrowRight 回绕首项；首项 ArrowLeft 回绕末项；ArrowDown/ArrowUp 同向', () => {
+      const editor = new Editor()
+      const utils = renderWithEditor(editor)
+      openPanel(utils)
+
+      // 末项 → 首项
+      fireEvent.click(radio(utils, 'WEBP'))
+      const webp = radio(utils, 'WEBP')
+      webp.focus()
+      fireEvent.keyDown(webp, { key: 'ArrowRight', code: 'ArrowRight' })
+      expect(radio(utils, 'PNG').getAttribute('aria-checked')).toBe('true')
+      expect(document.activeElement).toBe(radio(utils, 'PNG'))
+
+      // 首项 ArrowLeft → 末项
+      fireEvent.keyDown(radio(utils, 'PNG'), { key: 'ArrowLeft', code: 'ArrowLeft' })
+      expect(radio(utils, 'WEBP').getAttribute('aria-checked')).toBe('true')
+      expect(document.activeElement).toBe(radio(utils, 'WEBP'))
+
+      // ArrowDown 等同 ArrowRight，ArrowUp 等同 ArrowLeft
+      fireEvent.keyDown(radio(utils, 'WEBP'), { key: 'ArrowDown', code: 'ArrowDown' })
+      expect(radio(utils, 'PNG').getAttribute('aria-checked')).toBe('true')
+      fireEvent.keyDown(radio(utils, 'PNG'), { key: 'ArrowUp', code: 'ArrowUp' })
+      expect(radio(utils, 'WEBP').getAttribute('aria-checked')).toBe('true')
+      editor.destroy()
+    })
+
+    it('跳过 disabled：无选区时范围组从「整图」ArrowRight 回绕自身；有选区后落到「仅选中」', () => {
+      const editor = new Editor()
+      const utils = renderWithEditor(editor)
+      openPanel(utils)
+
+      const full = radio(utils, '整图')
+      full.focus()
+      fireEvent.keyDown(full, { key: 'ArrowRight', code: 'ArrowRight' })
+      // 唯一可用项：选中与焦点均保持
+      expect(radio(utils, '整图').getAttribute('aria-checked')).toBe('true')
+      expect(document.activeElement).toBe(radio(utils, '整图'))
+      expect(radio(utils, '整图').tabIndex).toBe(0)
+
+      withSelection(editor)
+      expect(radio(utils, '仅选中').disabled).toBe(false)
+      fireEvent.keyDown(radio(utils, '整图'), { key: 'ArrowRight', code: 'ArrowRight' })
+      expect(radio(utils, '仅选中').getAttribute('aria-checked')).toBe('true')
+      expect(document.activeElement).toBe(radio(utils, '仅选中'))
+      expect(radio(utils, '仅选中').tabIndex).toBe(0)
+      expect(radio(utils, '整图').tabIndex).toBe(-1)
+      editor.destroy()
+    })
+
+    it('选中项变为 disabled 后 tabIndex 落到第一个可用项', () => {
+      const editor = new Editor()
+      const utils = renderWithEditor(editor)
+      withSelection(editor)
+      openPanel(utils)
+
+      fireEvent.click(radio(utils, '仅选中'))
+      expect(radio(utils, '仅选中').tabIndex).toBe(0)
+
+      act(() => {
+        editor.selectObjects([])
+      })
+      // 兜底 effect 把 scope 退回整图；roving 落点随之回到「整图」
+      expect(radio(utils, '整图').getAttribute('aria-checked')).toBe('true')
+      expect(radio(utils, '整图').tabIndex).toBe(0)
+      expect(radio(utils, '仅选中').tabIndex).toBe(-1)
+      editor.destroy()
+    })
+
+    it('home/End 跳到首/末可用项', () => {
+      const editor = new Editor()
+      const utils = renderWithEditor(editor)
+      openPanel(utils)
+
+      const one = radio(utils, '1x')
+      one.focus()
+      fireEvent.keyDown(one, { key: 'End', code: 'End' })
+      expect(radio(utils, '3x').getAttribute('aria-checked')).toBe('true')
+      expect(document.activeElement).toBe(radio(utils, '3x'))
+
+      fireEvent.keyDown(radio(utils, '3x'), { key: 'Home', code: 'Home' })
+      expect(radio(utils, '1x').getAttribute('aria-checked')).toBe('true')
+      expect(document.activeElement).toBe(radio(utils, '1x'))
+      editor.destroy()
+    })
+
+    it('三组互不串扰：格式组方向键移动后倍率/范围的选中与 tabIndex 不变', () => {
+      const editor = new Editor()
+      const utils = renderWithEditor(editor)
+      openPanel(utils)
+
+      const png = radio(utils, 'PNG')
+      png.focus()
+      fireEvent.keyDown(png, { key: 'ArrowRight', code: 'ArrowRight' })
+      expect(radio(utils, 'JPEG').getAttribute('aria-checked')).toBe('true')
+
+      expect(radio(utils, '1x').getAttribute('aria-checked')).toBe('true')
+      expect(radio(utils, '1x').tabIndex).toBe(0)
+      expect(radio(utils, '2x').tabIndex).toBe(-1)
+      expect(radio(utils, '整图').getAttribute('aria-checked')).toBe('true')
+      expect(radio(utils, '整图').tabIndex).toBe(0)
+      expect(radio(utils, '仅选中').tabIndex).toBe(-1)
+      editor.destroy()
+    })
+  })
+
+  it('className 语义占位（fp-topbar，grid 落位在 styles.css）并可追加自定义 class', () => {
+    const editor = new Editor()
+    const utils = render(
+      <EditorProvider editor={editor}>
+        <TopBar className='extra' />
+      </EditorProvider>,
+    )
+
+    const bar = utils.container.querySelector('.fp-topbar') as HTMLElement
+    expect(bar).not.toBeNull()
+    expect(bar.className).toContain('extra')
+    expect(bar.getAttribute('style')).toBeNull()
+    editor.destroy()
+  })
+})

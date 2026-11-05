@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "paths": {
+      "~/*": ["./src/*"],
+      "~root/*": ["./*"]
+    },
+    "resolveJsonModule": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "declaration": false,
+    "noEmit": true,
+    "sourceMap": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": false,
+    "verbatimModuleSyntax": false,
+    "skipLibCheck": true,
+    "noStrictGenericChecks": false
+  },
+  "exclude": ["temp", "dist", "dist-webview", "node_modules", "backup", ".tmp", "src/webview/image-manager/components/image-editor/fabric-photo/**/*.test.ts", "src/webview/image-manager/components/image-editor/fabric-photo/**/*.test.tsx"]
+}

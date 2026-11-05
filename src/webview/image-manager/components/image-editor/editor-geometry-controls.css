@@ -1,0 +1,31 @@
+.fp-geometry-handle {
+  pointer-events: auto;
+}
+
+.fp-geometry-handle-hit {
+  fill: transparent;
+  stroke: none;
+}
+
+.fp-geometry-handle-visible {
+  pointer-events: none;
+  transition:
+    filter 120ms ease,
+    stroke-width 120ms ease;
+}
+
+.fp-geometry-handle-endpoint {
+  fill: white;
+  stroke: #0d99ff;
+}
+
+.fp-geometry-handle-accent {
+  fill: #fbbf24;
+  stroke: #1f2937;
+}
+
+.fp-geometry-handle:hover .fp-geometry-handle-visible {
+  filter: drop-shadow(0 0 2px rgb(13 153 255 / 90%));
+  stroke: #0d99ff;
+  stroke-width: 2px;
+}

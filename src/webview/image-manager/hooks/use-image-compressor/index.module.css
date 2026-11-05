@@ -1,0 +1,7 @@
+.custom_resize {
+  :global {
+    .ant-form-item-row {
+      @apply ml-2 h-full;
+    }
+  }
+}

@@ -1,0 +1,325 @@
+import type { FabricObject } from 'fabric'
+import type { EditorObject, ImageObject, PathObject, ShapeObject, TextObject } from '../model/doc'
+import { Ellipse, FabricImage, IText, Path, Rect, Triangle, util } from 'fabric'
+import { applyFiltersToImage } from './filters'
+import { arrowGeometryFromObject, ArrowPath } from './shapes/arrow-path'
+import { MeasurementPath } from './shapes/measurement-path'
+import { MosaicShape } from './shapes/mosaic-shape'
+import { ROUND_STROKE, smoothStrokeDash } from './stroke-style'
+
+/**
+ * fabric 6.9.1 的类型声明里没有 FabricObject.data（运行时有），
+ * 这里用交叉类型补齐，按 brief 挂 `{ fpId }` 做 state ↔ fabric 映射。
+ */
+export interface FabricObjectData {
+  fpId?: string
+}
+
+export function setFpId(fObj: FabricObject, id: string): void {
+  (fObj as FabricObject & { data?: FabricObjectData }).data = { fpId: id }
+}
+
+export function getFpId(fObj: FabricObject): string | undefined {
+  return (fObj as FabricObject & { data?: FabricObjectData }).data?.fpId
+}
+
+// —— 图片元素缓存（image 对象与背景共用）：createFabricObject 是同步的，
+// 调用方必须先通过 preloadImage 保证 src 已入缓存。 ——
+
+const imageCache = new Map<string, HTMLImageElement>()
+const imagePending = new Map<string, Promise<HTMLImageElement>>()
+
+export function preloadImage(src: string): Promise<HTMLImageElement> {
+  const cached = imageCache.get(src)
+  if (cached !== undefined) {
+    return Promise.resolve(cached)
+  }
+  const pending = imagePending.get(src)
+  if (pending !== undefined) {
+    return pending
+  }
+  const promise = util
+    .loadImage(src, { crossOrigin: 'anonymous' })
+    .then((img) => {
+      imageCache.set(src, img)
+      imagePending.delete(src)
+      return img
+    })
+    .catch((err: unknown) => {
+      imagePending.delete(src)
+      throw err
+    })
+  imagePending.set(src, promise)
+  return promise
+}
+
+export function getCachedImage(src: string): HTMLImageElement | undefined {
+  return imageCache.get(src)
+}
+
+// —— 属性映射 ——
+
+export interface FabricScaleAttrs {
+  scaleX: number
+  scaleY: number
+  flipX: boolean
+  flipY: boolean
+}
+
+/**
+ * state 带符号 scale（负值表示翻转）→ fabric 幂等投影。
+ * fabric 6.9.1 的 FabricObject._set 对负 scale 的语义是「toggle flipX/flipY 并取绝对值」
+ * （dist index.js ~7101），不是幂等赋值：直接 set({ scaleX: -1 }) 会让 flipX
+ * 随同步次数震荡（false→true→false），而 state 恒为 -1。
+ * 故 state → fabric 一律显式换算为 { abs(scale), flip 标志 }，绕开负 scale 赋值路径。
+ */
+export function scaleToFabric(scaleX: number, scaleY: number): FabricScaleAttrs {
+  return {
+    scaleX: Math.abs(scaleX),
+    scaleY: Math.abs(scaleY),
+    flipX: scaleX < 0,
+    flipY: scaleY < 0,
+  }
+}
+
+/** fabric 归一化后的 { scale（恒正）, flip } → state 带符号 scale（object:modified 回读用）。 */
+export function fabricToScale(scale: number, flip: boolean): number {
+  return flip ? -scale : scale
+}
+
+interface BaseAttrs {
+  left: number
+  top: number
+  angle: number
+  scaleX: number
+  scaleY: number
+  flipX: boolean
+  flipY: boolean
+  opacity: number
+  visible: boolean
+}
+
+function baseAttrs(obj: EditorObject): BaseAttrs {
+  return {
+    left: obj.left,
+    top: obj.top,
+    angle: obj.angle,
+    ...scaleToFabric(obj.scaleX, obj.scaleY),
+    // B3 图层属性投影：opacity 缺省 1；hidden → fabric visible:false（不渲染/不参与导出）
+    opacity: obj.opacity ?? 1,
+    visible: obj.hidden !== true,
+  }
+}
+
+function shapeAttrs(obj: ShapeObject): Record<string, unknown> {
+  return {
+    fill: obj.fill,
+    stroke: obj.stroke,
+    strokeWidth: obj.strokeWidth,
+    strokeDashArray: smoothStrokeDash(obj.strokeDash, obj.strokeWidth),
+    ...ROUND_STROKE,
+    strokeUniform: true,
+    objectCaching: false,
+  }
+}
+
+function textDecoration(obj: TextObject): { underline: boolean, linethrough: boolean } {
+  return {
+    underline: obj.textDecoration === 'underline',
+    linethrough: obj.textDecoration === 'line-through',
+  }
+}
+
+function textAttrs(obj: TextObject): Record<string, unknown> {
+  return {
+    fontSize: obj.fontSize,
+    fontFamily: obj.fontFamily,
+    fill: obj.fill,
+    fontWeight: obj.fontWeight,
+    fontStyle: obj.fontStyle,
+    textAlign: obj.textAlign,
+    ...textDecoration(obj),
+  }
+}
+
+function pathAttrs(obj: PathObject): Record<string, unknown> {
+  return {
+    objectCaching: obj.tool === 'freedraw',
+    stroke: obj.stroke,
+    strokeWidth: obj.strokeWidth,
+    // 自由绘制/线条类路径无填充；空串交给 fabric 会得到非法 Color，显式转 transparent
+    fill: obj.fill === '' ? 'transparent' : obj.fill,
+    strokeDashArray: smoothStrokeDash(obj.strokeDash, obj.strokeWidth),
+    strokeUniform: true,
+    ...ROUND_STROKE,
+    // Padding is in screen pixels and separates geometry nodes from box controls.
+    padding: obj.tool === 'measurement' || obj.tool === 'arrow' ? 14 : 0,
+  }
+}
+
+/**
+ * 由 path 字符串探测 fabric 自动定位后的 left/top（bbox 原点语义）。
+ * line/arrow controller 落盘 PathObject 时调用：保证 createFabricObject
+ * 以显式 left/top 重建后与预览几何完全一致。
+ */
+export function probePathPosition(pathData: string, strokeWidth = 1): { left: number, top: number } {
+  const probe = new Path(pathData, { strokeWidth })
+  return { left: probe.left, top: probe.top }
+}
+
+function imageAttrs(obj: ImageObject): Record<string, unknown> {
+  // 显式 width/height 覆盖自然尺寸，最终显示尺寸 = width × scaleX
+  return { width: obj.width, height: obj.height }
+}
+
+/** 拖拽旋转的吸附倍角（按住 Shift 时以该角度的整数倍吸附）。 */
+export const ROTATE_SNAP_ANGLE = 15
+
+/**
+ * Shift 旋转 15° 吸附接线（仅渲染投影，不改 state 语义；旋转提交仍走 object:modified 链路）。
+ * fabric 6.9.1 的 mtr 控制点（rotationWithSnapping）不检查 Shift——snapAngle > 0 即恒吸附；
+ * 这里把对象自己的 mtr actionHandler 包一层：未按 Shift 时临时清零 snapAngle 走自由旋转，
+ * 按住 Shift 才以 ROTATE_SNAP_ANGLE 倍角吸附（snapThreshold 缺省 = snapAngle，量化为整倍数）。
+ * fabric 6 每个实例有独立 controls（createControls per instance），原地包装不影响其他对象。
+ */
+export function applyRotateSnap(fObj: FabricObject): void {
+  fObj.snapAngle = ROTATE_SNAP_ANGLE
+  const mtr = fObj.controls.mtr
+  if (mtr === undefined) {
+    return
+  }
+  const baseHandler = mtr.actionHandler
+  mtr.actionHandler = (eventData, transform, x, y) => {
+    const target = transform.target
+    const shiftKey = (eventData as Partial<MouseEvent>).shiftKey === true
+    if (target === undefined || shiftKey) {
+      return baseHandler(eventData, transform, x, y)
+    }
+    const prevSnapAngle = target.snapAngle
+    target.snapAngle = 0
+    try {
+      return baseHandler(eventData, transform, x, y)
+    }
+    finally {
+      target.snapAngle = prevSnapAngle
+    }
+  }
+}
+
+/** 按 kind 分派创建 fabric 对象；调用方需保证 image 的 src 已 preload。 */
+export function createFabricObject(obj: EditorObject): FabricObject {
+  let fObj: FabricObject
+  switch (obj.kind) {
+    case 'shape':
+      if (obj.shapeType === 'rect') {
+        fObj = new Rect({ ...baseAttrs(obj), width: obj.width, height: obj.height, ...shapeAttrs(obj) })
+      }
+      else if (obj.shapeType === 'circle') {
+        // 对齐旧 shape.ts：用 Ellipse 伪造 circle
+        fObj = new Ellipse({ ...baseAttrs(obj), rx: obj.width / 2, ry: obj.height / 2, ...shapeAttrs(obj) })
+      }
+      else {
+        fObj = new Triangle({ ...baseAttrs(obj), width: obj.width, height: obj.height, ...shapeAttrs(obj) })
+      }
+      break
+    case 'text': {
+      // editable 初始关闭，进入文本编辑由 text controller 显式驱动；
+      // objectCaching:false + 隐藏中点控制点（对齐旧 text 模块渲染参数）
+      const itext = new IText(obj.text, {
+        ...baseAttrs(obj),
+        ...textAttrs(obj),
+        editable: false,
+        objectCaching: false,
+      })
+      itext.setControlsVisibility({ mb: false, ml: false, mr: false, mt: false })
+      fObj = itext
+      break
+    }
+    case 'path': {
+      const attrs = { ...baseAttrs(obj), ...pathAttrs(obj) }
+      const arrowGeometry = arrowGeometryFromObject(obj)
+      if (arrowGeometry !== null) {
+        fObj = new ArrowPath(obj.path, attrs, arrowGeometry)
+      }
+      else if (obj.tool === 'measurement') {
+        fObj = new MeasurementPath(obj.path, attrs, obj)
+      }
+      else {
+        fObj = new Path(obj.path, attrs)
+      }
+      break
+    }
+    case 'image': {
+      const img = getCachedImage(obj.src)
+      if (img === undefined) {
+        throw new Error(`image src not preloaded: ${obj.src.slice(0, 64)}`)
+      }
+      fObj = new FabricImage(img, { ...baseAttrs(obj), ...imageAttrs(obj) })
+      applyFiltersToImage(fObj as FabricImage, obj.filters)
+      break
+    }
+    case 'mosaic':
+      // rects 已归一化到外接框左上角；doc 的 left/top 为外接框中心。
+      // fabric 6 默认 originX:'left'/originY:'top'，必须显式 center origin，
+      // 否则命中框/选框相对可见内容偏移 (+w/2, +h/2)
+      fObj = new MosaicShape({
+        ...baseAttrs(obj),
+        originX: 'center',
+        originY: 'center',
+        width: obj.width,
+        height: obj.height,
+        mosaicRects: obj.rects,
+      })
+      break
+  }
+  setFpId(fObj, obj.id)
+  applyRotateSnap(fObj)
+  return fObj
+}
+
+/** 全量覆盖可变字段；调用方需保证 image 的新 src 已 preload。 */
+export function updateFabricObject(fObj: FabricObject, obj: EditorObject): void {
+  switch (obj.kind) {
+    case 'shape':
+      if (obj.shapeType === 'circle') {
+        fObj.set({ ...baseAttrs(obj), rx: obj.width / 2, ry: obj.height / 2, ...shapeAttrs(obj) })
+      }
+      else {
+        fObj.set({ ...baseAttrs(obj), width: obj.width, height: obj.height, ...shapeAttrs(obj) })
+      }
+      break
+    case 'text':
+      fObj.set({ ...baseAttrs(obj), text: obj.text, ...textAttrs(obj) })
+      break
+    case 'path':
+      if (fObj instanceof Path) {
+        (fObj as Path & { _setPath: (path: string) => void })._setPath(obj.path)
+      }
+      if (fObj instanceof ArrowPath) {
+        fObj.setArrowModel(obj)
+      }
+      if (fObj instanceof MeasurementPath) {
+        fObj.setMeasurementModel(obj)
+      }
+      fObj.set({ ...baseAttrs(obj), ...pathAttrs(obj) })
+      break
+    case 'image': {
+      const img = getCachedImage(obj.src)
+      if (img === undefined) {
+        throw new Error(`image src not preloaded: ${obj.src.slice(0, 64)}`)
+      }
+      const fImg = fObj as FabricImage
+      if (fImg.getElement() !== img) {
+        fImg.setElement(img)
+      }
+      fObj.set({ ...baseAttrs(obj), ...imageAttrs(obj) })
+      applyFiltersToImage(fImg, obj.filters)
+      break
+    }
+    case 'mosaic':
+      // 马赛克内容绘制后不可变（对齐 path），仅覆盖几何
+      fObj.set({ ...baseAttrs(obj), width: obj.width, height: obj.height, mosaicRects: obj.rects })
+      break
+  }
+  fObj.setCoords()
+}

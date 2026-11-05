@@ -1,0 +1,131 @@
+{
+  "pkg": {
+    "title": "Image Manager Pro",
+    "cmd": {
+      "open": "Erweiterung öffnen",
+      "reset_settings": "Einstellungen zurücksetzen",
+      "show_channel": "Ausgabekanal anzeigen",
+      "clear_cache": "Lokalen Cache leeren",
+      "configure_svgo": "svgo konfigurieren"
+    },
+    "core": {
+      "multiplePanels": "Mehrere Panels gleichzeitig zulassen",
+      "installDependencies": "Abhängigkeiten installieren"
+    },
+    "debug": { "enabled": "Debug-Modus aktivieren", "forceInstall": "Abhängigkeiten zwangsweise installieren" },
+    "file": {
+      "root": "Arbeitsbereichs-Wurzel",
+      "exclude": "Bilder scannen, außer in Ausschlussliste (micromatch-Syntax)",
+      "gitignore": "Bilder aus .gitignore ausschließen",
+      "scan": "Zu scannender Bildtyp",
+      "customFormats": "Benutzerdefinierte Bildformat-Voreinstellungen für NPY- und Raw-Dateien",
+      "confirmDelete": "Fragen, ob das Bild gelöscht werden soll",
+      "revealFileInOsDeeply": "Ordner öffnen, wenn in OS angezeigt",
+      "trashAfterProcessing": "Bild nach Verarbeitung in Papierkorb verschieben"
+    },
+    "viewer": {
+      "warningSize": "Wenn die Bildgröße diesen Wert (KB) überschreitet, wird oben rechts im Bild ein Warnsymbol angezeigt. Bei Wert 0 wird keine Warnung angezeigt.",
+      "imageWidth": "Bildbreite (px)",
+      "imageBackgroundColor": "Bildhintergrundfarbe",
+      "imageRendering": "Bilddarstellung",
+      "showDetailsOnHover": "Bilddetails beim Überfahren anzeigen"
+    },
+    "appearance": {
+      "theme": "Design",
+      "language": "Sprache",
+      "primaryColor": "Primärfarbe",
+      "reducedMotion": "Animationen reduzieren"
+    },
+    "compression": {
+      "errorRange": "Fehlertoleranz (KB); Überschreitungen gelten als Größensteigerung nach der Kompression",
+      "keepOriginal": "Originalbild behalten",
+      "skipCompressed": "Bereits komprimierte Bilder überspringen",
+      "quality": "Bildqualität",
+      "fileSuffix": "Dateisuffix",
+      "size": "Bildgröße (x)",
+      "format": "Ausgabeformat des Bildes",
+      "png": { "compressionLevel": "Komprimierungsgrad" },
+      "gif": { "colors": "Farben" },
+      "svg": {
+        "compressedAttribute": "Füge nach der Kompression das Attribut \"compressed\" zum SVG hinzu. Auf null setzen, um zu deaktivieren.",
+        "removeDataAttributes": "Entfernt data-* Attribute aus SVGs. Ausnahme: data-[{compressedAttribute}]"
+      }
+    },
+    "conversion": { "icoSize": "Größe des ICO" },
+    "similarity": {
+      "precision": "Standard-Distanzschwelle für pHash-, Histogramm- und Hybrid-Suche. Niedriger ist strenger; höher findet mehr bearbeitete Varianten."
+    }
+  },
+  "prompt": {
+    "cancel": "Abbrechen",
+    "cancelled": "Abgebrochen",
+    "config_changed_tip": "Konfiguration geändert",
+    "compressor_init_fail": "Installation der Abhängigkeiten fehlgeschlagen. Bitte Netzwerk prüfen.",
+    "deps_init_success": "Abhängigkeiten erfolgreich installiert",
+    "initializing": "Image Manager wird initialisiert, bitte warten...",
+    "initializing_tooltip": "Erforderliche Abhängigkeiten werden heruntergeladen",
+    "initialized": "Image Manager wurde initialisiert",
+    "updating": "Image Manager wird aktualisiert, bitte warten...",
+    "updated": "Image Manager wurde aktualisiert",
+    "show_logs": "Protokolle anzeigen",
+    "copy_install_command": "Installationsbefehl kopieren",
+    "reload_now": "Jetzt neu laden",
+    "load_sharp_failed": "Laden des Kernskripts fehlgeschlagen",
+    "deps_init_aborted": "Installation der Abhängigkeiten abgebrochen",
+    "deps_init_timeout": "Zeitüberschreitung bei der Installation der Abhängigkeiten",
+    "current_language": "Aktuelle Sprache",
+    "clear_cache_success": "Cache erfolgreich gelöscht, bitte VS Code neu laden",
+    "cache_not_found": "Kein Cache gefunden",
+    "retry": "Erneut versuchen",
+    "yes": "Ja",
+    "no": "Nein",
+    "reset_settings_tip": "Bist du sicher, dass du die Einstellungen zurücksetzen möchtest?",
+    "reset_settings_success": "Zurücksetzen erfolgreich",
+    "reset_settings_fail": "Zurücksetzen fehlgeschlagen",
+    "cancel_operation_tip": "Vorgang abgebrochen",
+    "watch_root": "Beobachte Arbeitsbereich: {0}"
+  },
+  "core": {
+    "compress_fail": "Komprimierung fehlgeschlagen",
+    "dep_install_fail": "Installation der Abhängigkeiten fehlgeschlagen",
+    "dep_install_fail_with_command": "Abhängigkeiten konnten nicht installiert werden ({0}). Im Terminal des Erweiterungshosts (PowerShell oder cmd unter Windows, bash unter Linux oder WSL) einen der folgenden Befehle ausführen und das Fenster neu laden:\n{1}",
+    "compress_fail_reason_extension": "{0}-Format wird derzeit nicht unterstützt",
+    "compress_fail_reason_unknown": "Unbekannter Fehler",
+    "compress_fail_reason_size": "Maximal unterstützte Größe {0} MB",
+    "view_solution": "Lösung anzeigen",
+    "extension_root": "Erweiterungs-Root",
+    "platform": "Betriebssystemplattform",
+    "manual_install_failed": "Manuelle Installation fehlgeschlagen. Stelle sicher, dass die richtige Version installiert wird.",
+    "manual_install_success": "Manuelle Installation erfolgreich",
+    "auto_install_success": "Automatische Installation erfolgreich",
+    "dep_cache_dir": "Cache-Verzeichnis für Abhängigkeiten",
+    "start_manual_install": "Manuelle Installation der Abhängigkeiten starten",
+    "start_auto_install": "Automatische Installation der Abhängigkeiten starten",
+    "format_not_supported": "{0}-Format wird nicht unterstützt",
+    "tip": "Tipp",
+    "dep_url_tip": "Die folgende Adresse dient zum manuellen Herunterladen der Abhängigkeiten. Wenn die automatische Installation fehlschlägt, befolge bitte die Dokumentation, um die Abhängigkeiten manuell herunterzuladen und in das Erweiterungsverzeichnis zu kopieren.",
+    "dep_url": "Download-URL für Abhängigkeiten",
+    "workspace_changed": "Arbeitsbereichs-Wurzel: {0}",
+    "load_core_script_success": "Kernskript erfolgreich geladen",
+    "load_core_script_fail": "Laden des Kernskripts fehlgeschlagen",
+    "config_changed": "\"{0}\"-Konfiguration wurde geändert",
+    "load_from_cache": "Abhängigkeit bereits installiert, wird aus Cache geladen",
+    "libvips_diff": "libvips-Version unterscheidet sich, libvips-Dateien werden in den OS-Cache kopiert",
+    "sharp_diff": "sharp-Version unterscheidet sich, sharp-Dateien werden in den OS-Cache kopiert",
+    "version_diff": "Die Erweiterungsversion unterscheidet sich von der im Cache",
+    "install_finished": "Installation der Abhängigkeiten abgeschlossen",
+    "trash_error": "Fehler beim Verschieben in den Papierkorb",
+    "save_cropper_image_error": "Fehler beim Speichern des zugeschnittenen Bildes",
+    "get_git_staged_error": "Fehler beim Abrufen der Git-Staging-Dateien",
+    "compress_error": "Fehler bei der Komprimierung",
+    "copy_base64_error": "Fehler beim Kopieren von Base64",
+    "covert_base64_error": "Fehler beim Umwandeln in Base64",
+    "webview_ready": "Webansicht bereit",
+    "post_message_to_webview": "Nachricht an Webansicht senden",
+    "handler_fn_not_exist": "Handler-Funktion \"{0}\" existiert nicht",
+    "output_path_not_exist": "Ausgabepfad existiert nicht",
+    "svgo_error_tip": "Bitte stelle sicher, dass die svgo-Konfiguration korrekt ist",
+    "file_exist": "Datei existiert",
+    "file_not_exist": "Datei existiert nicht"
+  }
+}

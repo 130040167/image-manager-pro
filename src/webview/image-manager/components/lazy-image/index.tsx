@@ -1,0 +1,240 @@
+import type { GetProps, ImageProps } from 'antd'
+import type { ReactNode } from 'react'
+import type ImageName from '../image-name'
+import { useInViewport, useMemoizedFn } from 'ahooks'
+import { trim } from 'es-toolkit'
+import { isObject } from 'es-toolkit/compat'
+import { useAtomValue } from 'jotai'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { animateScroll } from 'react-scroll'
+import logger from '~/utils/logger'
+import { useControlledState } from '~/webview/image-manager/hooks/use-controlled-state'
+import { classNames } from '~/webview/image-manager/utils/tw-clsx'
+import { getAppRoot } from '~/webview/utils'
+import useImageManagerEvent, { IMEvent } from '../../hooks/use-image-manager-event'
+import { GlobalAtoms } from '../../stores/global/global-store'
+import { clearTimestamp, isElInViewport } from '../../utils'
+import { useLazyMargin } from '../image-group/use-lazy-load-images'
+import VisibleImage from './components/visible-image'
+
+type Props = {
+  /**
+   * 图片信息
+   */
+  image: ImageType
+  /**
+   * 点击预览回调
+   * NOTE: 需要把右键中的preview功能开启
+   */
+  onPreviewClick?: (image: ImageType) => void
+  /**
+   * 是否懒加载
+   * @default true
+   */
+  lazy?:
+    | boolean
+    | {
+      /**
+       * 懒加载根节点
+       * 必传
+       */
+      root: HTMLElement
+    }
+  /**
+   * 点击remove icon回调
+   * 如果不传此参数，则不会显示remove icon
+   */
+  onRemoveClick?: (image: ImageType) => void
+  /**
+   * 增强渲染remove icon
+   */
+  removeRender?: (children: ReactNode, image: ImageType) => ReactNode
+  /**
+   * 右键上下文回调
+   */
+  onContextMenu?: (e: React.MouseEvent<HTMLDivElement>, image: ImageType) => void
+  /**
+   * 透传给 antd Image 组件的 props
+   */
+  antdImageProps: ImageProps
+  /**
+   * 透传给 ImageName 组件的props
+   */
+  imageNameProps?: GetProps<typeof ImageName>
+  /**
+   * 图片选中
+   */
+  selected?: boolean
+  /**
+   * 图片状态改变回调
+   */
+  onSelectedChange?: (image: ImageType, active: boolean) => void
+
+  /**
+   * 处于多选状态
+   */
+  isMultipleSelecting?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => boolean
+  /**
+   * 交互样式 (hover，selected)
+   */
+  interactive?: boolean
+  /**
+   * className
+   */
+  className?: (image: ImageType) => string
+  /**
+   * 是否是viewer中的图片
+   */
+  inViewer?: boolean
+}
+
+function LazyImage(props: Props) {
+  const {
+    image,
+    lazy = true,
+    className,
+    inViewer,
+    ...rest
+  } = props
+
+  const root = useMemo(() => {
+    if (isObject(lazy)) {
+      return lazy.root
+    }
+    if (lazy) {
+      return getAppRoot()
+    }
+    return null
+  }, [lazy])
+
+  const [selected, setSelected] = useControlledState<boolean>({
+    value: props.selected,
+    onChange(value) {
+      props.onSelectedChange?.(image, value)
+    },
+  })
+
+  const imagePlaceholderSize = useAtomValue(GlobalAtoms.imagePlaceholderSizeAtom)
+  const imageReveal = useAtomValue(GlobalAtoms.imageRevealAtom)
+
+  const { rootVerticalMargin } = useLazyMargin()
+  const elRef = useRef<HTMLDivElement>(null)
+
+  const [elInView] = useInViewport(elRef, {
+    root,
+    rootMargin: `${rootVerticalMargin()}px 0px`,
+  })
+
+  // Sticky mount：一旦进入过视口就保持挂载
+  // 切换 vscode 标签页时，IntersectionObserver 会把所有元素判定为不可见，
+  // 若依据 elInView 卸载会让整页瞬时变成占位符 → 切回时白屏一帧。
+  // 让 VisibleImage 在首次出现后常驻，可避免这种闪烁。
+  const [hasBeenInView, setHasBeenInView] = useState(false)
+  useEffect(() => {
+    if (elInView && !hasBeenInView) {
+      setHasBeenInView(true)
+    }
+  }, [elInView, hasBeenInView])
+
+  const isTargetImage = useMemoizedFn(() => {
+    // 在 viewer 中的图片才会被reveal
+    return inViewer && trim(image.path).length && clearTimestamp(imageReveal) === image.path
+  })
+
+  const { imageManagerEvent } = useImageManagerEvent()
+
+  // 如果当前图片是用户右键打开的图片
+  // 则滚动到图片位置
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+    let scrolled = false
+
+    if (isTargetImage()) {
+      // 清除 imageReveal，避免重复选中
+      imageManagerEvent.emit(IMEvent.clear_image_reveal)
+
+      logger.debug('Reveal图片', image.path)
+
+      // 刚打开时，图片可能还未加载，所以需要等待图片加载完成后再滚动
+      const callback = () => {
+        try {
+          if (scrolled || isElInViewport(elRef.current)) {
+            logger.debug('图片已在视口中，无需滚动', image.path)
+            return
+          }
+
+          logger.debug('打开Reveal图片', image.path)
+
+          const y = elRef.current?.getBoundingClientRect().top
+          const clientHeight = document.documentElement.clientHeight
+
+          if (y && !scrolled) {
+            animateScroll.scrollTo(
+              y + getAppRoot().scrollTop - clientHeight / 2 + (imagePlaceholderSize?.height || 0) / 2,
+              {
+                duration: 0,
+                smooth: true,
+                delay: 0,
+                containerId: 'root',
+              },
+            )
+            scrolled = true
+          }
+        }
+        finally {
+          setSelected(true)
+        }
+      }
+
+      // 从explorer打开图片
+      timer = setTimeout(() => {
+        callback()
+        imageManagerEvent.emit(IMEvent.clear_image_reveal)
+      })
+    }
+
+    return () => {
+      if (isTargetImage()) {
+        logger.debug('清除Reveal图片')
+        setSelected(false)
+        imageManagerEvent.emit(IMEvent.clear_image_reveal)
+        clearTimeout(timer)
+      }
+    }
+  }, [imageReveal, image.path])
+
+  return (
+    <div ref={elRef} className={classNames('select-none transition-opacity', className?.(image))}>
+      {/* <OffScreen
+        mode={elInView || !lazy ? 'visible' : 'hidden'}
+        fallback={(
+          <div
+            style={{
+              width: imagePlaceholderSize?.width,
+              height: imagePlaceholderSize?.height,
+            }}
+          >
+          </div>
+        )}
+      >
+        <VisibleImage {...rest} selected={selected} image={image} />
+      </OffScreen> */}
+      {elInView || hasBeenInView || !lazy
+        ? (
+            <VisibleImage {...rest} selected={selected} image={image} />
+          )
+        : (
+            <div
+              style={{
+                width: imagePlaceholderSize?.width,
+                height: imagePlaceholderSize?.height,
+                containIntrinsicSize: `${imagePlaceholderSize?.width}px ${imagePlaceholderSize?.height}px`,
+              }}
+            >
+            </div>
+          )}
+    </div>
+  )
+}
+
+export default memo(LazyImage)

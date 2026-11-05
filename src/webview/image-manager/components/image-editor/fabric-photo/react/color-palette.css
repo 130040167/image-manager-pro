@@ -1,0 +1,145 @@
+.fp-editor .fp-color-palette {
+  position: relative;
+}
+.fp-editor .fp-color-custom-separator {
+  width: 1px;
+  height: 14px;
+  margin: 0 1px;
+  background: var(--fp-border);
+}
+.fp-editor .fp-color-custom {
+  display: grid;
+  place-items: center;
+  flex: 0 0 20px;
+  overflow: hidden;
+}
+.fp-editor .fp-color-custom-rainbow {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  background: conic-gradient(
+    from 20deg,
+    #ef4444,
+    #f59e0b,
+    #eab308,
+    #22c55e,
+    #06b6d4,
+    #3b82f6,
+    #8b5cf6,
+    #ec4899,
+    #ef4444
+  );
+}
+.fp-editor .fp-custom-color-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1010;
+  width: 234px;
+  padding: 9px;
+  color: var(--fp-text);
+  background: var(--fp-bg-panel);
+  border: 1px solid var(--fp-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
+}
+.fp-editor .fp-custom-color-panel-up {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+.fp-editor .fp-custom-color-panel-left {
+  right: auto;
+  left: 0;
+}
+.fp-editor .fp-custom-color-row,
+.fp-editor .fp-custom-color-rgb,
+.fp-editor .fp-custom-color-section,
+.fp-editor .fp-custom-color-grid {
+  display: flex;
+  align-items: center;
+}
+.fp-editor .fp-custom-color-row {
+  gap: 6px;
+}
+.fp-editor .fp-custom-color-hex {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  flex: 1;
+}
+.fp-editor .fp-custom-color-panel label > span,
+.fp-editor .fp-custom-color-section > span {
+  font-size: 10px;
+  color: var(--fp-text-dim);
+}
+.fp-editor .fp-custom-color-panel input:not([type='color']) {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 24px;
+  padding: 2px 5px;
+  color: var(--fp-text);
+  font: inherit;
+  font-size: 11px;
+  background: var(--fp-bg-app);
+  border: 1px solid var(--fp-border);
+  border-radius: 4px;
+  outline: none;
+}
+.fp-editor .fp-custom-color-panel input:not([type='color']):focus {
+  border-color: var(--fp-accent);
+}
+.fp-editor .fp-native-color-input {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--fp-border);
+  border-radius: 4px;
+  background: transparent;
+}
+.fp-editor .fp-custom-color-rgb {
+  gap: 6px;
+  margin-top: 7px;
+}
+.fp-editor .fp-custom-color-rgb label {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+}
+.fp-editor .fp-custom-color-rgb input {
+  width: 47px;
+  appearance: textfield;
+}
+.fp-editor .fp-custom-color-rgb input::-webkit-inner-spin-button {
+  appearance: none;
+}
+.fp-editor .fp-custom-color-section {
+  min-height: 22px;
+  margin-top: 7px;
+  gap: 7px;
+}
+.fp-editor .fp-custom-color-section > span:first-child {
+  width: 24px;
+  flex: 0 0 24px;
+}
+.fp-editor .fp-custom-color-grid {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.fp-editor .fp-custom-color-grid .fp-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+}
+.fp-editor .fp-custom-color-empty {
+  font-size: 10px;
+  color: var(--fp-text-dim);
+}
+.fp-editor .fp-color-popover.fp-color-popover-v2 {
+  width: 238px;
+  padding: 10px;
+  border-radius: 6px;
+}
+.fp-editor .fp-color-popover.fp-color-popover-v2 .fp-color-palette {
+  justify-content: flex-start;
+}

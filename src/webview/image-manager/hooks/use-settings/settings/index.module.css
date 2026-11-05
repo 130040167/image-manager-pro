@@ -1,0 +1,158 @@
+.settingsRoot {
+  display: flex;
+  width: min(860px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 132px);
+  min-width: min(720px, calc(100vw - 48px));
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settingsBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.settingsFooter {
+  flex: 0 0 auto;
+}
+
+.tabs {
+  :global {
+    .ant-tabs-tab-btn {
+      @apply text-lg font-medium;
+    }
+
+    .ant-tabs-content-holder {
+      min-height: 0;
+    }
+
+    .ant-tabs-content {
+      min-height: 0;
+    }
+  }
+}
+
+.fileFormatControls {
+  display: grid;
+  grid-template-columns: minmax(148px, 1.15fr) minmax(124px, 0.9fr) 112px auto;
+  align-items: start;
+  gap: 8px;
+}
+
+.fileFormatTagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fileFormatTag {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 5px;
+  margin-inline-end: 0;
+  border-radius: 7px;
+  padding: 3px 9px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+
+  :global(.ant-tag-close-icon) {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+  }
+}
+
+.fileFormatTagCloseIcon {
+  flex: 0 0 auto;
+}
+
+.fileFormatsRoot {
+  max-width: 100%;
+}
+
+.fileFormatsRoot {
+  :global {
+    .ant-collapse-header {
+      align-items: center !important;
+      padding: 7px 10px !important;
+    }
+
+    .ant-collapse-content-box {
+      padding: 8px 10px 10px !important;
+    }
+
+    .ant-collapse .ant-collapse {
+      border-radius: 8px;
+    }
+  }
+}
+
+.fileFormatPresetForm {
+  max-width: 100%;
+
+  :global {
+    .ant-form-item {
+      margin-bottom: 0;
+    }
+
+    .ant-form-item-label {
+      padding-bottom: 2px;
+    }
+
+    .ant-form-item-label > label {
+      height: 17px;
+      font-size: 12px;
+      line-height: 17px;
+    }
+
+    .ant-input,
+    .ant-input-number,
+    .ant-select-single {
+      min-height: 27px;
+    }
+
+    .ant-input,
+    .ant-input-number-input,
+    .ant-select-single .ant-select-selector {
+      font-size: 12px;
+    }
+
+    .ant-select-single .ant-select-selector,
+    .ant-input-number .ant-input-number-input {
+      min-height: 27px;
+    }
+  }
+}
+
+.fileFormatPresetGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 10px;
+}
+
+.presetField,
+.presetFieldWide,
+.presetFieldFull {
+  min-width: 0;
+}
+
+.presetFieldWide {
+  grid-column: span 2;
+}
+
+.presetFieldFull {
+  grid-column: 1 / -1;
+}
+
+.presetRangeGroup {
+  display: grid;
+  min-width: 0;
+  grid-column: span 2;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}

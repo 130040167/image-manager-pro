@@ -1,0 +1,4 @@
+.fp-editor[data-theme='dark'] .fp-number-field input[type='number'],
+.fp-editor[data-theme='dark'] input.fp-zoom-value[type='number'] {
+  color-scheme: dark;
+}

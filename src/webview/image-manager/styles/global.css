@@ -1,0 +1,160 @@
+blockquote,
+dl,
+dd,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+hr,
+figure,
+p,
+pre {
+  @apply m-0;
+}
+
+html,
+body {
+  @apply h-full w-full p-0;
+}
+
+#root {
+  /* 设置html overflow-y-scroll 会造成图片列表渲染错位问题 */
+  /* 所以在 #root 元素上设置 */
+  @apply h-full w-full select-none overflow-y-scroll;
+}
+
+body.im-viewport-restoring > #root,
+body.im-viewport-restoring .ant-image-preview-root,
+body.im-viewport-restoring .rc-image-preview-root,
+body.im-viewport-restoring .ant-modal-root,
+body.im-viewport-restoring .ant-dropdown,
+body.im-viewport-restoring .ant-popover,
+body.im-viewport-restoring .ant-tooltip {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body {
+  [role='dialog'] {
+    @apply !origin-center;
+  }
+
+  .ant-btn-icon-only {
+    @apply inline-flex items-center justify-center;
+  }
+
+  .ant-checkbox-wrapper {
+    @apply select-none;
+  }
+
+  .ant-btn {
+    @apply inline-flex items-center justify-center;
+  }
+
+  .ant-tabs-nav {
+    &::before {
+      @apply !border-b-0;
+    }
+  }
+
+  .ant-modal-root .ant-modal-centered .ant-modal {
+    /* 让center看起来更舒适 */
+    @apply top-[-12%];
+  }
+
+  .ant-modal-confirm .ant-modal-confirm-paragraph {
+    /* modal内容宽度占满 */
+    @apply max-w-none;
+  }
+
+  .vim-settings-modal {
+    @apply max-w-none;
+    top: 0 !important;
+    padding-bottom: 0;
+  }
+
+  .vim-settings-modal .ant-modal-content {
+    display: flex;
+    max-height: calc(100vh - 32px);
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .vim-settings-modal .ant-modal-body {
+    min-height: 0;
+    max-height: calc(100vh - 108px);
+    overflow: hidden;
+  }
+
+  .vim-settings-modal .ant-modal-close {
+    z-index: 2;
+    top: 12px;
+    inset-inline-end: 12px;
+  }
+
+  .vim-custom-format-popup,
+  .vim-custom-format-popover {
+    z-index: 10070 !important;
+  }
+
+  .vim-custom-format-popover .ant-popover-inner {
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(20, 22, 28, 0.96);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(12px);
+  }
+
+  .vim-custom-format-popover .ant-popover-arrow {
+    display: none;
+  }
+
+  .vim-custom-format-raw-form .ant-form-item-label {
+    padding-bottom: 2px;
+  }
+
+  .vim-custom-format-raw-form .ant-form-item-label > label {
+    height: 18px;
+    font-size: 12px;
+  }
+
+  .vim-custom-format-raw-form .ant-input-number,
+  .vim-custom-format-raw-form .ant-select-selector,
+  .vim-custom-format-raw-form .ant-input {
+    min-height: 26px;
+  }
+}
+
+::-webkit-scrollbar {
+  @apply h-2 w-2;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply rounded bg-[var(--vscode-scrollbarSlider-background)];
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-[var(--vscode-scrollbarSlider-hoverBackground)];
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-corner {
+  @apply bg-[var(--vscode-editor-background)];
+}
+
+/* 隐藏 antd 自带的翻页按钮（我们在竖条区域自己渲染箭头） */
+.ant-image-preview-switch-left,
+.ant-image-preview-switch-right {
+  display: none !important;
+}
+
+/* 隐藏 antd 自带的页码进度（我们已经在 toolbar 里渲染了页码 + 翻页按钮） */
+.ant-image-preview-progress {
+  display: none !important;
+}

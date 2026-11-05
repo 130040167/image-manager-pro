@@ -1,0 +1,36 @@
+@import './numeric-field.css';
+
+.fp-editor .fp-zoom-value {
+  width: 58px;
+  min-width: 58px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--fp-text);
+  font: inherit;
+  font-size: 12px;
+  text-align: center;
+}
+
+.fp-editor .fp-zoom-value:focus {
+  outline: none;
+  border-color: var(--fp-accent);
+  background: var(--fp-bg-panel);
+}
+
+.fp-editor .fp-zoom-unit {
+  margin-left: -5px;
+  margin-right: 3px;
+  color: var(--fp-text-dim);
+  font-size: 11px;
+}
+
+@media (max-width: 560px) {
+  .fp-editor .fp-zoom-controls .fp-zoom-reset {
+    display: inline-flex;
+  }
+
+  .fp-editor .fp-zoom-value {
+    width: 48px;
+    min-width: 48px;
+  }
+}

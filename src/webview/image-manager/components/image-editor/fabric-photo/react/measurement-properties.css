@@ -1,0 +1,217 @@
+/* Measurement inspector: one style form for the active canvas label. */
+.fp-editor .fp-label-controls,
+.fp-editor .fp-label-color-field {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.fp-editor .fp-label-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fp-editor .fp-label-switch {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 18px;
+  padding: 2px;
+  border: 1px solid var(--fp-border);
+  border-radius: 999px;
+  background: var(--fp-bg-hover);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.fp-editor .fp-label-switch > span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--fp-text-dim);
+  transition: transform 120ms ease;
+}
+.fp-editor .fp-label-switch[aria-checked='true'] {
+  border-color: var(--fp-accent);
+  background: var(--fp-accent);
+}
+.fp-editor .fp-label-switch[aria-checked='true'] > span {
+  transform: translateX(12px);
+  background: #fff;
+}
+.fp-editor .fp-label-content-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fp-editor .fp-label-caption {
+  color: var(--fp-text-dim);
+  font-size: 11px;
+}
+.fp-editor .fp-label-segments {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--fp-border);
+  border-radius: 7px;
+  background: var(--fp-bg-app);
+}
+.fp-editor .fp-label-segments button {
+  height: 24px;
+  min-width: 42px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--fp-text-dim);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fp-editor .fp-label-segments button[aria-pressed='true'] {
+  background: var(--fp-bg-panel);
+  color: var(--fp-text);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+.fp-editor .fp-label-segments button:hover:not(:disabled) {
+  color: var(--fp-accent);
+}
+.fp-editor .fp-label-name-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+.fp-editor .fp-label-name-preview {
+  overflow: hidden;
+  padding: 5px 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--fp-text-dim);
+  font-size: 11px;
+}
+.fp-editor .fp-label-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.fp-editor .fp-label-metric {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 2px;
+  border: 1px solid var(--fp-border);
+  border-radius: 6px;
+  background: var(--fp-bg-app);
+}
+.fp-editor .fp-label-metric[data-active='true'] {
+  border-color: color-mix(in srgb, var(--fp-accent) 65%, var(--fp-border));
+  background: var(--fp-accent-soft);
+}
+.fp-editor .fp-label-metric-select {
+  flex: 1;
+  height: 26px;
+  border-radius: 4px;
+  text-align: left;
+  padding-left: 9px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.fp-editor .fp-label-metric-select[aria-pressed='true'] {
+  color: var(--fp-accent);
+}
+.fp-editor .fp-label-eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  color: var(--fp-text-dim);
+}
+.fp-editor .fp-label-eye[aria-pressed='true'] {
+  color: var(--fp-accent);
+}
+.fp-editor .fp-label-eye:hover:not(:disabled) {
+  background: var(--fp-bg-hover);
+}
+.fp-editor .fp-label-style {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.fp-editor .fp-label-type-row,
+.fp-editor .fp-label-background-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px 38px;
+  gap: 7px;
+  align-items: end;
+}
+.fp-editor .fp-label-style .fp-number-field,
+.fp-editor .fp-label-style .fp-option-field {
+  min-width: 0;
+  font-size: 10px;
+  gap: 4px;
+}
+.fp-editor .fp-label-style .fp-number-field-label {
+  white-space: nowrap;
+}
+.fp-editor .fp-label-style .fp-number-field input {
+  width: 100%;
+  height: 28px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.fp-editor .fp-label-style .fp-current-color {
+  width: 38px;
+  gap: 2px;
+  padding: 4px;
+}
+.fp-editor .fp-label-style .fp-current-color > span {
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+}
+.fp-editor .fp-label-style .fp-current-color svg {
+  width: 9px;
+  flex-shrink: 0;
+}
+.fp-editor .fp-label-controls:disabled,
+.fp-editor .fp-label-switch:disabled,
+.fp-editor .fp-label-color-field:disabled {
+  opacity: .45;
+}
+.fp-editor .fp-measurement-summary {
+  padding: 8px 10px;
+  background: var(--fp-bg-app);
+  border-color: color-mix(in srgb, var(--fp-border) 65%, transparent);
+  border-radius: 7px;
+  gap: 7px;
+}
+.fp-editor .fp-measurement-result-row {
+  grid-template-columns: minmax(30px, 1fr) minmax(0, auto) 25px;
+  column-gap: 16px;
+  font-size: 11px;
+}
+.fp-editor .fp-measurement-result-number {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -.02em;
+}
+.fp-editor .fp-measurement-section-header .fp-number-field-label {
+  font-size: 10px;
+}
+.fp-editor .fp-measurement-section-header .fp-number-field input {
+  width: 44px;
+  height: 25px;
+  padding: 0 5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fp-editor .fp-label-switch,
+  .fp-editor .fp-label-switch > span {
+    transition: none;
+  }
+}

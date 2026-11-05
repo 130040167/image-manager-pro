@@ -1,0 +1,59 @@
+// See https://go.microsoft.com/fwlink/?LinkId=733558
+// for the documentation about the tasks.json format
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Watch Webview",
+      "type": "npm",
+      "script": "ui:dev",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "close": true
+      },
+      "problemMatcher": [
+        {
+          "owner": "vite-watch",
+          "pattern": {
+            "regexp": "^(?!)"
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "VITE\\s+v",
+            "endsPattern": "Local:\\s+http"
+          }
+        }
+      ],
+      "group": "build"
+    },
+    {
+      "label": "Watch Extension",
+      "type": "npm",
+      "script": "vsc:dev",
+      "dependsOn": "Watch Webview",
+      "dependsOrder": "parallel",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "close": true
+      },
+      "problemMatcher": [
+        {
+          "owner": "extension-watch",
+          "pattern": {
+            "regexp": "^(?!)"
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "Build start",
+            "endsPattern": "Build success"
+          }
+        }
+      ],
+      "group": "build"
+    }
+  ]
+}

@@ -1,0 +1,278 @@
+.fp-editor .fp-annotation-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--fp-border);
+}
+.fp-editor .fp-annotation-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--fp-text-dim);
+}
+.fp-editor .fp-annotation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fp-editor .fp-annotation-opacity .fp-number-field {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fp-editor .fp-annotation-opacity input {
+  width: 64px;
+}
+.fp-editor .fp-property-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+.fp-editor .fp-property-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+.fp-editor .fp-endpoint-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
+}
+.fp-editor .fp-endpoint-fields .fp-arrow-head-trigger {
+  width: 100%;
+  height: 28px;
+}
+.fp-editor .fp-measurement-results {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 62px;
+  align-items: end;
+  gap: 8px;
+}
+.fp-editor .fp-measurement-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fp-editor .fp-measurement-section-header .fp-number-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+}
+.fp-editor .fp-measurement-section-header .fp-number-field input {
+  width: 48px;
+}
+.fp-editor .fp-measurement-results .fp-props-readonly-value {
+  overflow-wrap: anywhere;
+}
+.fp-editor .fp-measurement-result-row {
+  display: grid;
+  grid-template-columns: minmax(54px, 1fr) auto auto;
+  align-items: baseline;
+  column-gap: 16px;
+}
+.fp-editor .fp-measurement-result-number {
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
+  color: var(--fp-text);
+}
+.fp-editor .fp-measurement-result-unit {
+  min-width: 26px;
+  color: var(--fp-text-dim);
+  font-size: 10px;
+  text-align: left;
+}
+.fp-editor .fp-measurement-typography-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+.fp-editor .fp-measurement-background-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(82px, .85fr);
+  gap: 8px;
+  align-items: end;
+}
+.fp-editor .fp-measurement-background-grid .fp-number-field {
+  min-width: 0;
+}
+.fp-editor .fp-measurement-background-grid .fp-number-field input {
+  width: 64px;
+}
+.fp-editor .fp-measurement-metric-visibility {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fp-text-dim);
+  font-size: 11px;
+}
+.fp-editor .fp-measurement-metric-visibility label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--fp-text);
+}
+.fp-editor .fp-measurement-metric-visibility input {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--fp-accent);
+}
+.fp-editor .fp-measurement-metric-settings {
+  gap: 7px;
+}
+.fp-editor .fp-measurement-metric-row {
+  display: grid;
+  grid-template-columns: minmax(72px, .76fr) minmax(0, 1.24fr);
+  align-items: end;
+  gap: 8px;
+}
+.fp-editor .fp-measurement-metric-row + .fp-measurement-metric-row {
+  padding-top: 7px;
+  border-top: 1px solid var(--fp-border);
+}
+.fp-editor .fp-measurement-metric-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--fp-text-dim);
+  font-size: 11px;
+}
+.fp-editor .fp-measurement-metric-title strong {
+  color: var(--fp-text);
+  font-weight: 600;
+}
+.fp-editor .fp-measurement-metric-title label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.fp-editor .fp-measurement-metric-title input {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--fp-accent);
+}
+.fp-editor .fp-measurement-metric-fields {
+  grid-template-columns: minmax(0, 1fr) auto;
+  display: grid;
+  align-items: end;
+  gap: 8px;
+}
+.fp-editor .fp-property-pair .fp-arrow-head-trigger {
+  width: 100%;
+  height: 30px;
+  border-radius: 6px;
+}
+.fp-editor .fp-option-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  color: var(--fp-text-dim);
+  font-size: 11px;
+}
+.fp-editor .fp-option-field select,
+.fp-editor .fp-custom-name {
+  height: 28px;
+  min-width: 0;
+  width: 100%;
+  padding: 0 7px;
+  color: var(--fp-text);
+  background: var(--fp-bg-panel);
+  border: 1px solid var(--fp-border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+}
+.fp-editor[data-theme='dark'] select {
+  color-scheme: dark;
+}
+.fp-editor .fp-annotation-visibility {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+}
+.fp-editor .fp-annotation-visibility label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.fp-editor .fp-annotation-visibility input {
+  accent-color: var(--fp-accent);
+  width: 13px;
+  height: 13px;
+}
+.fp-editor .fp-property-hint {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--fp-text-dim);
+  margin: -2px 0 0;
+}
+.fp-editor .fp-measurement-summary {
+  padding: 7px 9px;
+  border: 1px solid var(--fp-border);
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.fp-editor .fp-measurement-summary strong {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.fp-editor .fp-current-color {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  width: 52px;
+  height: 28px;
+  padding: 4px;
+  color: var(--fp-text-dim);
+  background: var(--fp-bg-panel);
+  border: 1px solid var(--fp-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.fp-editor .fp-current-color > span {
+  width: 24px;
+  height: 18px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgb(128 128 128 / 25%);
+}
+.fp-editor .fp-current-color:hover,
+.fp-editor .fp-current-color[aria-expanded='true'] {
+  border-color: var(--fp-accent);
+}
+.fp-editor .fp-color-field {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.fp-editor .fp-color-popover {
+  position: fixed;
+  width: 220px;
+  z-index: 1000;
+  padding: 12px;
+  background: var(--fp-bg-panel);
+  border: 1px solid var(--fp-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 25%);
+}
+.fp-editor .fp-color-popover-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--fp-text-dim);
+}
+.fp-editor .fp-color-popover .fp-color-palette {
+  justify-content: space-between;
+}

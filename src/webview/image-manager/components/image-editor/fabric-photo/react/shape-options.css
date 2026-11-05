@@ -1,0 +1,127 @@
+.fp-editor .fp-shape-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 370px;
+  max-width: calc(100vw - 110px);
+}
+.fp-shape-primary,
+.fp-shape-secondary {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.fp-shape-arrow-ends {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--fp-text-dim);
+}
+
+.fp-shape-kind-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.fp-editor .fp-shape-kind-btn {
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
+  flex: 0 0 30px;
+}
+
+.fp-shape-kind-btn svg {
+  display: block;
+}
+
+.fp-shape-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: var(--fp-border);
+}
+
+.fp-shape-width {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--fp-text-dim);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.fp-shape-width select {
+  width: 48px;
+  height: 26px;
+  padding: 0 4px;
+  border: 1px solid var(--fp-border);
+  border-radius: 4px;
+  color: var(--fp-text);
+  background: var(--fp-bg-panel);
+}
+
+.fp-arrow-head-picker {
+  position: relative;
+}
+
+.fp-arrow-head-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 26px;
+  border: 1px solid var(--fp-border);
+  border-radius: 4px;
+  color: var(--fp-text);
+  background: var(--fp-bg-panel);
+}
+
+.fp-arrow-head-trigger:hover,
+.fp-arrow-head-trigger[aria-expanded='true'] {
+  border-color: var(--fp-accent);
+  background: var(--fp-bg-hover);
+}
+
+.fp-arrow-head-menu {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 5px);
+  left: 50%;
+  display: grid;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--fp-border);
+  border-radius: 6px;
+  background: var(--fp-bg-panel);
+  box-shadow: var(--fp-shadow-pop);
+  transform: translateX(-50%);
+}
+
+.fp-arrow-head-menu button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 26px;
+  border-radius: 4px;
+  color: var(--fp-text);
+}
+
+.fp-arrow-head-menu button:hover,
+.fp-arrow-head-menu button[aria-selected='true'] {
+  color: var(--fp-accent);
+  background: var(--fp-accent-soft);
+}
+
+@media (max-width: 760px) {
+  .fp-shape-options {
+    max-width: calc(100vw - 92px);
+    flex-wrap: wrap;
+  }
+}

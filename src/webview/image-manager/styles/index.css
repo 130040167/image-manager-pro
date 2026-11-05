@@ -1,0 +1,4 @@
+@import 'antd/dist/reset.css';
+@import './tailwind.css';
+@import '../components/image-editor/fabric-photo/react/styles.css';
+@import './global.css';

@@ -1,0 +1,35 @@
+.viewerShell {
+  @apply fixed inset-0 flex flex-col items-center justify-start bg-[rgba(12,12,14,0.9)] px-8 pb-8 pt-6;
+}
+
+.controls {
+  @apply mb-5 flex w-full max-w-[1600px] items-center justify-between rounded-xl bg-[rgba(40,40,44,0.88)] px-4 py-3 text-white shadow-2xl backdrop-blur-md;
+}
+
+.controlsGroup {
+  @apply flex items-center gap-2;
+}
+
+.iconButton {
+  @apply flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white hover:bg-white/10;
+}
+
+.zoomBadge {
+  @apply min-w-[74px] select-none rounded-md bg-black/30 px-3 py-2 text-center text-sm text-white;
+}
+
+.compareViewport {
+  @apply flex w-full flex-1 items-start justify-center overflow-auto pb-6;
+}
+
+.slider {
+  @apply max-w-none overflow-hidden rounded-lg border border-white/10 shadow-2xl;
+  :global {
+    .__rcs-handle-button {
+      @apply h-[32px] w-[32px] gap-[6px] !important;
+      .__rcs-handle-arrow {
+        @apply border-b-[4px] border-r-[6px] border-t-[4px] !important;
+      }
+    }
+  }
+}

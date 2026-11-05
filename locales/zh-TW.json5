@@ -1,0 +1,143 @@
+{
+  // package.json
+  "pkg": {
+    "title": "Image Manager Pro",
+    "cmd": {
+      "open": "打開擴展",
+      "reset_settings": "重置設置",
+      "show_channel": "顯示輸出",
+      "clear_cache": "清除本地緩存",
+      "configure_svgo": "配置svgo"
+    },
+    "core": {
+      "multiplePanels": "允許同時存在多個面板",
+      "installDependencies": "安裝依賴"
+    },
+    "debug": {
+      "enabled": "開啟調試模式",
+      "forceInstall": "強制安裝依賴"
+    },
+    "file": {
+      "root": "根工作區",
+      "exclude": "排除範圍內的圖片 (micromatch 匹配語法)",
+      "gitignore": "排除 .gitignore 中的圖片",
+      "scan": "掃描圖片的類型",
+      "customFormats": "NPY 和 Raw 檔案的自訂圖像格式預設",
+      "confirmDelete": "刪除圖片時是否詢問",
+      "revealFileInOsDeeply": "在OS中顯示文件夾時進入到文件夾中",
+      "trashAfterProcessing": "圖片處理之後是否放入回收站中"
+    },
+    "viewer": {
+      "warningSize": "如果圖片大小大於此值 (KB)，則圖片右上角顯示警告圖標。值為0時不顯示",
+      "imageWidth": "圖片寬度 (px)",
+      "imageBackgroundColor": "圖片背景色",
+      "imageRendering": "image rendering",
+      "showDetailsOnHover": "滑鼠懸停時顯示圖片詳情"
+    },
+    "appearance": {
+      "theme": "主題",
+      "language": "語言",
+      "primaryColor": "主題色",
+      "reducedMotion": "減少動畫"
+    },
+    "compression": {
+      "errorRange": "誤差範圍（KB），超出此誤差視為圖片壓縮後增大",
+      "keepOriginal": "保留原圖",
+      "skipCompressed": "跳過已壓縮的圖片",
+      "quality": "圖片質量",
+      "fileSuffix": "壓縮後綴",
+      "size": "圖片尺寸 (倍數)",
+      "format": "圖片格式",
+      "png": {
+        "compressionLevel": "壓縮等級"
+      },
+      "gif": {
+        "colors": "色彩"
+      },
+      "svg": {
+        "compressedAttribute": "svg壓縮後添加「已壓縮」屬性。如果設置為 null，則禁用功能",
+        "removeDataAttributes": "刪除svg中的 data-* 屬性。除了 data-[{compressedAttribute}]"
+      }
+    },
+    "conversion": {
+      "icoSize": "ico 圖標尺寸"
+    },
+    "similarity": {
+      "precision": "pHash、直方圖和混合相似搜尋的預設距離閾值。值越小越嚴格，值越大越容易找出編輯變體。"
+    }
+  },
+  // 提示
+  "prompt": {
+    "cancel": "取消",
+    "cancelled": "已取消",
+    "config_changed_tip": "配置已更改",
+    "compressor_init_fail": "依賴安裝失敗，請檢查網絡",
+    "deps_init_success": "依賴安裝成功",
+    "initializing": "Image Manager初始化中，請稍等...",
+    "initializing_tooltip": "正在下載必要依賴",
+    "initialized": "Image Manager初始化完成",
+    "updating": "Image Manager 更新中，請稍等...",
+    "updated": "Image Manager 更新完成",
+    "show_logs": "顯示日誌",
+    "copy_install_command": "複製安裝命令",
+    "reload_now": "立即重啟",
+    "load_sharp_failed": "加載核心腳本失敗",
+    "deps_init_aborted": "已取消安裝依賴",
+    "deps_init_timeout": "依賴安裝超時",
+    "current_language": "當前語言",
+    "clear_cache_success": "清除緩存成功，請重啟vscode生效",
+    "cache_not_found": "未找到緩存文件",
+    "retry": "重試",
+    "yes": "是",
+    "no": "否",
+    "reset_settings_tip": "您確定要重置設置嗎？",
+    "reset_settings_success": "重置成功",
+    "reset_settings_fail": "重置失敗",
+    "cancel_operation_tip": "取消操作",
+    "watch_root": "監聽根工作區: {0}"
+  },
+  // 核心代碼
+  "core": {
+    "compress_fail": "壓縮失敗",
+    "dep_install_fail": "依賴安裝失敗",
+    "dep_install_fail_with_command": "依賴安裝失敗（{0}）。請在擴充宿主的終端執行下面任意一條命令（Windows 用 PowerShell 或 cmd，Linux / WSL 用 bash），完成後重新載入視窗：\n{1}",
+    "compress_fail_reason_extension": "暫不支持 {0} 格式",
+    "compress_fail_reason_unknown": "未知錯誤",
+    "compress_fail_reason_size": "最大支持體積 {0} MB",
+    "view_solution": "查看解決方案",
+    "extension_root": "插件根目錄",
+    "platform": "系統平台",
+    "manual_install_failed": "手動安裝依賴失敗，請確保安裝對應版本",
+    "manual_install_success": "手動安裝依賴成功",
+    "auto_install_success": "自動安裝依賴成功",
+    "dep_cache_dir": "依賴緩存目錄",
+    "start_manual_install": "開始手動安裝依賴",
+    "start_auto_install": "開始自動安裝依賴",
+    "format_not_supported": "不支持 {0} 格式",
+    "tip": "溫馨提示",
+    "dep_url_tip": "以下是手動下載依賴地址。如果自動安裝依賴失敗，請參考文檔，手動下載依賴，放在插件根目錄下",
+    "dep_url": "依賴下載地址",
+    "workspace_changed": "根工作區: {0}",
+    "load_core_script_success": "核心腳本加載成功",
+    "load_core_script_fail": "核心腳本加載失敗",
+    "config_changed": "\"{0}\" 配置已更改",
+    "load_from_cache": "依賴已安裝，從緩存加載",
+    "libvips_diff": "libvips 版本不同，復制libvips文件到系統緩存",
+    "sharp_diff": "sharp 版本不同，復制sharp文件到系統緩存",
+    "version_diff": "插件版本與緩存的版本不同",
+    "install_finished": "依賴安裝流程結束",
+    "trash_error": "回收文件錯誤",
+    "save_cropper_image_error": "保存裁剪圖片錯誤",
+    "get_git_staged_error": "獲取git暫存文件錯誤",
+    "compress_error": "壓縮錯誤",
+    "copy_base64_error": "復制base64錯誤",
+    "covert_base64_error": "轉換base64錯誤",
+    "webview_ready": "Webview準備就緒",
+    "post_message_to_webview": "向Webview發送消息",
+    "handler_fn_not_exist": "處理方法 \"{0}\" 不存在",
+    "output_path_not_exist": "輸出路徑不存在",
+    "svgo_error_tip": "請確保svgo配置正確",
+    "file_exist": "文件已存在",
+    "file_not_exist": "文件不存在"
+  }
+}

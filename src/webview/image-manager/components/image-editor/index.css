@@ -1,0 +1,262 @@
+.vim-image-editor-page {
+  height: 100vh;
+  min-height: 0;
+}
+
+.vim-image-editor-page .fp-editor {
+  height: 100%;
+  background: #181818;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.vim-image-editor-page .fp-histogram-btn {
+  color: #fff;
+}
+
+.vim-image-editor-page .fp-editor[data-theme='light'] .fp-histogram-btn {
+  color: var(--fp-text);
+}
+
+.vim-image-editor-page .fp-measure-stroke-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vim-image-editor-page .fp-measure-stroke-row .fp-number-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.vim-image-editor-page .fp-measure-stroke-row input {
+  width: 52px;
+  padding: 0 4px;
+}
+
+.vim-image-editor-page .fp-pixel-grid {
+  image-rendering: pixelated;
+}
+
+.vim-image-editor-page .fp-canvas-mount canvas {
+  image-rendering: auto;
+}
+
+.fp-measure-node-halo {
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.fp-measure-marker:hover .fp-measure-node-halo {
+  opacity: 1;
+}
+
+.vim-image-editor-page .fp-pixel-grid {
+  z-index: 1;
+  pointer-events: none !important;
+}
+
+.vim-image-editor-page .fp-measure-overlay {
+  z-index: 3;
+}
+
+.vim-image-editor-page .vim-editor-extra-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vim-image-editor-page .vim-editor-toolbar {
+  position: fixed;
+  z-index: 10030;
+  top: 14px;
+  right: 14px;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.vim-image-editor-page .vim-editor-toolbar-inner {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(20, 22, 28, 0.88);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+}
+
+.vim-image-editor-page .vim-editor-toolbar-inner .ant-btn {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 7px;
+  color: rgba(255, 255, 255, 0.88);
+  border-color: rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: transparent;
+}
+
+.vim-image-editor-page .vim-editor-toolbar-inner .ant-btn:hover {
+  background: rgba(255, 255, 255, 0.11) !important;
+}
+
+.vim-image-editor-page .vim-editor-toolbar-inner .ant-btn-primary {
+  color: #ffffff !important;
+  border-color: rgba(130, 160, 255, 0.68) !important;
+  background: rgba(80, 120, 255, 0.32) !important;
+  box-shadow: inset 0 0 0 1px rgba(130, 160, 255, 0.46) !important;
+}
+
+.vim-image-editor-page .vim-editor-toolbar-inner .ant-btn-primary:hover {
+  background: rgba(92, 132, 255, 0.42) !important;
+}
+
+.vim-image-editor-page .vim-editor-toolbar-inner .ant-typography {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.vim-image-editor-page .vim-custom-format-toolbar-editor {
+  position: fixed;
+  z-index: 10060;
+  top: 60px;
+  right: 14px;
+  display: flex;
+  max-width: min(520px, calc(100vw - 28px));
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(20, 22, 28, 0.88);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.88);
+  cursor: grab;
+  pointer-events: auto;
+  backdrop-filter: blur(12px);
+}
+
+.vim-image-editor-page .vim-custom-format-toolbar-editor:active {
+  cursor: grabbing;
+}
+
+.vim-image-editor-page .vim-custom-format-toolbar-editor .ant-btn {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 7px;
+  color: rgba(255, 255, 255, 0.88);
+  border-color: rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: transparent;
+}
+
+.vim-image-editor-page .vim-custom-format-toolbar-editor .ant-btn-primary {
+  color: #ffffff !important;
+  border-color: rgba(130, 160, 255, 0.68) !important;
+  background: rgba(80, 120, 255, 0.32) !important;
+}
+
+.vim-image-editor-page .vim-custom-format-toolbar-editor .ant-typography {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.vim-image-editor-page .vim-editor-zoom-button {
+  min-width: 52px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.vim-image-editor-page .vim-editor-zoom-input.ant-input-number {
+  width: 60px;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.vim-image-editor-page .vim-editor-zoom-input .ant-input-number-input {
+  height: 28px;
+  padding: 0 6px;
+  color: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.vim-image-editor-page .vim-editor-zoom-input.ant-input-number:hover,
+.vim-image-editor-page .vim-editor-zoom-input.ant-input-number-focused {
+  border-color: rgba(22, 119, 255, 0.6);
+  box-shadow: none;
+}
+
+.vim-image-editor-page .vim-editor-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.vim-image-editor-page .vim-editor-toolbar-inner .ant-btn[disabled],
+.vim-image-editor-page .vim-editor-toolbar-inner .ant-btn[disabled]:hover {
+  color: rgba(255, 255, 255, 0.26) !important;
+  background: transparent !important;
+}
+
+.vim-image-editor-page .vim-editor-measure-overlay {
+  z-index: 3;
+}
+
+.vim-image-editor-page .vim-editor-measure-palette {
+  position: fixed;
+  z-index: 10031;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(20, 22, 28, 0.92);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.78);
+  cursor: grab;
+  backdrop-filter: blur(12px);
+}
+
+.vim-image-editor-page .vim-editor-measure-palette:active {
+  cursor: grabbing;
+}
+
+.vim-image-editor-page .vim-editor-measure-palette-handle {
+  display: inline-flex;
+  width: 18px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 12px;
+  line-height: 1;
+  cursor: grab;
+}
+
+.vim-image-editor-page .vim-editor-measure-panel {
+  position: fixed;
+  z-index: 10029;
+  top: 72px;
+  right: 14px;
+  bottom: 80px;
+  width: 320px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(20, 22, 28, 0.94);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
+  color: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(12px);
+}
+
+.vim-image-editor-page .vim-editor-pixel-grid {
+  z-index: 1;
+  pointer-events: none !important;
+}

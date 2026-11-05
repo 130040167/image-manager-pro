@@ -1,0 +1,143 @@
+{
+  // package.json
+  "pkg": {
+    "title": "Image Manager Pro",
+    "cmd": {
+      "open": "打开扩展",
+      "reset_settings": "重置设置",
+      "show_channel": "显示输出",
+      "clear_cache": "清除本地缓存",
+      "configure_svgo": "配置svgo"
+    },
+    "core": {
+      "multiplePanels": "允许同时存在多个面板",
+      "installDependencies": "安装依赖"
+    },
+    "debug": {
+      "enabled": "开启调试模式",
+      "forceInstall": "强制安装依赖"
+    },
+    "file": {
+      "root": "根工作区",
+      "exclude": "排除范围内的图片 (micromatch 匹配语法)",
+      "gitignore": "排除 .gitignore 中的图片",
+      "scan": "扫描图片的类型",
+      "customFormats": "NPY 和 Raw 文件的自定义图像格式预设",
+      "confirmDelete": "删除图片时是否询问",
+      "revealFileInOsDeeply": "在OS中显示文件夹时进入到文件夹中",
+      "trashAfterProcessing": "图片处理之后是否放入回收站中"
+    },
+    "viewer": {
+      "warningSize": "如果图片大小大于此值 (KB)，则图片右上角显示警告图标。值为0时不显示",
+      "imageWidth": "图片宽度 (px)",
+      "imageBackgroundColor": "图片背景色",
+      "imageRendering": "image rendering",
+      "showDetailsOnHover": "鼠标悬停时显示图片详情"
+    },
+    "appearance": {
+      "theme": "主题",
+      "language": "语言",
+      "primaryColor": "主题色",
+      "reducedMotion": "减少动画"
+    },
+    "compression": {
+      "errorRange": "误差范围（KB），超出此误差视为图片压缩后增大",
+      "keepOriginal": "保留原图",
+      "skipCompressed": "跳过已压缩的图片",
+      "quality": "图片质量",
+      "fileSuffix": "压缩后缀",
+      "size": "图片尺寸 (倍数)",
+      "format": "图片格式",
+      "png": {
+        "compressionLevel": "压缩等级"
+      },
+      "gif": {
+        "colors": "色彩"
+      },
+      "svg": {
+        "compressedAttribute": "svg压缩后添加「已压缩」属性。如果设置为 null，则禁用功能",
+        "removeDataAttributes": "删除svg中的 data-* 属性。除了 data-[{compressedAttribute}]"
+      }
+    },
+    "conversion": {
+      "icoSize": "ico 图标尺寸"
+    },
+    "similarity": {
+      "precision": "pHash、直方图和混合相似搜索的默认距离阈值。值越小越严格，值越大越容易找出编辑变体。"
+    }
+  },
+  // 提示
+  "prompt": {
+    "cancel": "取消",
+    "cancelled": "已取消",
+    "config_changed_tip": "配置已更改",
+    "compressor_init_fail": "依赖安装失败，请检查网络",
+    "deps_init_success": "依赖安装成功",
+    "initializing": "Image Manager 初始化中，请稍等...",
+    "initializing_tooltip": "正在下载必要依赖",
+    "initialized": "Image Manager 初始化完成",
+    "updating": "Image Manager 更新中，请稍等...",
+    "updated": "Image Manager 更新完成",
+    "show_logs": "显示日志",
+    "copy_install_command": "复制安装命令",
+    "reload_now": "立即重启",
+    "load_sharp_failed": "加载核心脚本失败",
+    "deps_init_aborted": "已取消安装依赖",
+    "deps_init_timeout": "依赖安装超时",
+    "current_language": "当前语言",
+    "clear_cache_success": "清除缓存成功，请重启vscode生效",
+    "cache_not_found": "未找到缓存文件",
+    "retry": "重试",
+    "yes": "是",
+    "no": "否",
+    "reset_settings_tip": "您确定要重置设置吗？",
+    "reset_settings_success": "重置成功",
+    "reset_settings_fail": "重置失败",
+    "cancel_operation_tip": "取消操作",
+    "watch_root": "监听根工作区: {0}"
+  },
+  // 核心代码
+  "core": {
+    "compress_fail": "压缩失败",
+    "dep_install_fail": "依赖安装失败",
+    "dep_install_fail_with_command": "依赖安装失败（{0}）。请在扩展宿主的终端执行下面任意一条命令（Windows 用 PowerShell 或 cmd，Linux / WSL 用 bash），完成后重载窗口：\n{1}",
+    "compress_fail_reason_extension": "暂不支持 {0} 格式",
+    "compress_fail_reason_unknown": "未知错误",
+    "compress_fail_reason_size": "最大支持体积 {0} MB",
+    "view_solution": "查看解决方案",
+    "extension_root": "插件根目录",
+    "platform": "系统平台",
+    "manual_install_failed": "手动安装依赖失败，请确保安装对应版本",
+    "manual_install_success": "手动安装依赖成功",
+    "auto_install_success": "自动安装依赖成功",
+    "dep_cache_dir": "依赖缓存目录",
+    "start_manual_install": "开始手动安装依赖",
+    "start_auto_install": "开始自动安装依赖",
+    "format_not_supported": "不支持 {0} 格式",
+    "tip": "温馨提示",
+    "dep_url_tip": "以下是手动下载依赖地址。如果自动安装依赖失败，请参考文档，手动下载依赖，放在插件根目录下",
+    "dep_url": "依赖下载地址",
+    "workspace_changed": "根工作区: {0}",
+    "load_core_script_success": "核心脚本加载成功",
+    "load_core_script_fail": "核心脚本加载失败",
+    "config_changed": "\"{0}\" 配置已更改",
+    "load_from_cache": "依赖已安装，从缓存加载",
+    "libvips_diff": "libvips 版本不同，复制libvips文件到系统缓存",
+    "sharp_diff": "sharp 版本不同，复制sharp文件到系统缓存",
+    "version_diff": "插件版本与缓存的版本不同",
+    "install_finished": "依赖安装流程结束",
+    "trash_error": "回收文件错误",
+    "save_cropper_image_error": "保存裁剪图片错误",
+    "get_git_staged_error": "获取git暂存文件错误",
+    "compress_error": "压缩错误",
+    "copy_base64_error": "复制base64错误",
+    "covert_base64_error": "转换base64错误",
+    "webview_ready": "Webview准备就绪",
+    "post_message_to_webview": "向Webview发送消息",
+    "handler_fn_not_exist": "处理方法 \"{0}\" 不存在",
+    "output_path_not_exist": "输出路径不存在",
+    "svgo_error_tip": "请确保svgo配置正确",
+    "file_exist": "文件已存在",
+    "file_not_exist": "文件不存在"
+  }
+}

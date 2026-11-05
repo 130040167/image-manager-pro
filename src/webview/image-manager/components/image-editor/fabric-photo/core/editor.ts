@@ -1,0 +1,1703 @@
+import type { EditorEventMap } from './events'
+import type { ArrowHeadStyle, EditorObject, FilterSettings, ImageObject, MeasurementArc, MeasurementEndpoints, MeasurementLabel, PathObject, Point, ShapeObject } from './model/doc'
+import type { Plugin } from './plugins/plugin'
+import type { ControllerContext } from './render/controllers/controller'
+import type { TextStyleOptions } from './render/controllers/text'
+import type { Renderer } from './render/renderer'
+import type { EditorMode, Viewport } from './state/editor-state'
+import type { ObjectAttrs } from './steps/object-steps'
+import type { ReorderAction } from './steps/reorder-objects-step'
+import { normalizeValueRange } from '../../histogram-range'
+import { buildMeasurementPath } from '../../measurement'
+import { Emitter } from './events'
+import { objectBBox } from './model/bbox'
+import { DEFAULT_FILTERS } from './model/doc'
+import { createId } from './model/id'
+import { History } from './plugins/history'
+import { Keymap } from './plugins/keymap'
+import { ArrowController } from './render/controllers/arrow'
+import { CropController } from './render/controllers/crop'
+import { DrawController } from './render/controllers/draw'
+import { LineController } from './render/controllers/line'
+import { MosaicController } from './render/controllers/mosaic'
+import { PanController } from './render/controllers/pan'
+import { SelectController } from './render/controllers/select'
+import { ShapeController } from './render/controllers/shape'
+import { createTextObject, DEFAULT_TEXT, TEXT_STYLE_DEFAULTS, TextController } from './render/controllers/text'
+import { exportDocBlob, exportDocDataURL, exportSelectionBlob, exportSelectionDataURL, exportViewportImage, getViewportDocRect } from './render/exporter'
+import { FabricRenderer } from './render/fabric-renderer'
+import { preloadImage, probePathPosition, updateFabricObject } from './render/object-factory'
+import { arrowGeometryFromObject, buildArrowPath } from './render/shapes/arrow-path'
+import { EditorState, ZOOM_MAX, ZOOM_MIN } from './state/editor-state'
+import { SetBackground, TransformDoc } from './steps/doc-steps'
+import { sameFilters, SetFilters } from './steps/filter-steps'
+import { AddObject, ClearObjects, RemoveObject, UpdateObject } from './steps/object-steps'
+import { computeReorderedIds, ReorderObjects } from './steps/reorder-objects-step'
+import { SetValueRange } from './steps/value-range-step'
+import { Transaction } from './transform/transaction'
+
+export interface EditorOptions {
+  container?: HTMLElement // 传入时自动创建 FabricRenderer；缺省 + renderer 缺省 = 无头模式（测试）
+  cssMaxWidth?: number
+  cssMaxHeight?: number
+  plugins?: Plugin[] // 追加插件（history/keymap 始终默认注册）
+  renderer?: Renderer // 显式注入优先；缺省且给了 container 时自动 new FabricRenderer
+}
+
+/** 容器可见区域在 doc 坐标系下的矩形（getViewPortInfo 返回值）。 */
+export interface ViewportInfo {
+  width: number
+  height: number
+  left: number
+  top: number
+}
+
+/**
+ * 导出选项（toDataURL/toBlobData/getExportSize 共用）。
+ * - type：MIME 类型，如 'image/png'（默认）/'image/jpeg'/'image/webp'
+ * - quality：jpeg/webp 质量 0..1（png 忽略）
+ * - multiplier：输出倍率（输出像素 = 导出尺寸 × multiplier），默认 1；非正数按 1 处理
+ * - selectionOnly：仅导出当前选中对象——裁剪到选中集 bbox、不含背景、透明底
+ *   （选中集为空时 toDataURL/toBlobData 抛错，getExportSize 返回 null）
+ */
+export interface ExportImageOptions {
+  type?: string
+  quality?: number
+  multiplier?: number
+  selectionOnly?: boolean
+}
+
+function sameSelection(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i])
+}
+
+function sameViewport(a: Viewport, b: Viewport): boolean {
+  return a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY
+}
+
+function pathPositionAfterStrokeWidthChange(obj: PathObject, strokeWidth: number): { left: number, top: number } {
+  const previous = probePathPosition(obj.path, obj.strokeWidth)
+  const next = probePathPosition(obj.path, strokeWidth)
+  return {
+    left: obj.left + next.left - previous.left,
+    top: obj.top + next.top - previous.top,
+  }
+}
+
+/**
+ * 编辑器主类：dispatch 流程 + 订阅 + 语义事件 + undo/redo 驱动 History。
+ * dispatch 顺序固定：filter → apply → append → 置 state → history 收账 →
+ * renderer 同步 → 事件 → 其余插件 onTransaction。
+ */
+export class Editor {
+  private currentState: EditorState
+  private readonly emitter = new Emitter<EditorEventMap>()
+  private readonly listeners = new Set<(state: EditorState, prev: EditorState) => void>()
+  private readonly plugins: Plugin[]
+  private readonly historyPlugin: History
+  private readonly renderer?: Renderer
+  /** 对象剪贴板（内部，不操作系统剪贴板）：copy/cut 时存选中对象的深拷贝。 */
+  private clipboard: EditorObject[] = []
+  /** 同一轮连续 paste 的级联偏移倍数（第 n 次偏移 16*n）；copy/cut 后重置为 1。 */
+  private pasteCascade = 1
+  /** renderer 为 FabricRenderer 时的具体引用（导出 API 需要访问 fabric canvas）。 */
+  private readonly fabricRenderer?: FabricRenderer
+  /** 绘制三件套 controller（仅 FabricRenderer 存在时创建；无头模式下对应 API 仅切 mode）。 */
+  private readonly drawController?: DrawController
+  private readonly lineController?: LineController
+  private readonly arrowController?: ArrowController
+  /** shape controller（同上，仅 FabricRenderer 存在时创建）。 */
+  private readonly shapeController?: ShapeController
+  /** text controller（同上，仅 FabricRenderer 存在时创建）。 */
+  private readonly textController?: TextController
+  /** mosaic controller（同上，仅 FabricRenderer 存在时创建）。 */
+  private readonly mosaicController?: MosaicController
+  /** crop controller（同上，仅 FabricRenderer 存在时创建）。 */
+  private readonly cropController?: CropController
+
+  constructor(options: EditorOptions = {}) {
+    this.currentState = new EditorState()
+    this.historyPlugin = new History(sizes => this.emitter.emit('historyChange', sizes))
+    this.renderer
+            = options.renderer
+              ?? (options.container !== undefined
+                ? new FabricRenderer({
+                  container: options.container,
+                  cssMaxWidth: options.cssMaxWidth,
+                  cssMaxHeight: options.cssMaxHeight,
+                })
+                : undefined)
+    this.fabricRenderer = this.renderer instanceof FabricRenderer ? this.renderer : undefined
+    this.plugins = [this.historyPlugin, new Keymap(this), ...(options.plugins ?? [])]
+    if (this.fabricRenderer !== undefined) {
+      const ctx: ControllerContext = {
+        canvas: this.fabricRenderer.canvas,
+        getState: () => this.currentState,
+        dispatch: tr => this.dispatch(tr),
+        fire: (name, payload) => {
+          this.emitter.emit(name, payload)
+        },
+      }
+      this.fabricRenderer.setControllerContext(ctx)
+      // select controller（mode 'normal'）注册即激活
+      this.fabricRenderer.registerController(new SelectController())
+      this.fabricRenderer.registerController(new PanController())
+      this.drawController = new DrawController()
+      this.lineController = new LineController()
+      this.arrowController = new ArrowController()
+      this.shapeController = new ShapeController()
+      this.textController = new TextController()
+      this.mosaicController = new MosaicController()
+      this.cropController = new CropController()
+      this.fabricRenderer.registerController(this.drawController)
+      this.fabricRenderer.registerController(this.lineController)
+      this.fabricRenderer.registerController(this.arrowController)
+      this.fabricRenderer.registerController(this.shapeController)
+      this.fabricRenderer.registerController(this.textController)
+      this.fabricRenderer.registerController(this.mosaicController)
+      this.fabricRenderer.registerController(this.cropController)
+    }
+  }
+
+  get state(): EditorState {
+    return this.currentState
+  }
+
+  get history(): History {
+    return this.historyPlugin
+  }
+
+  newTransaction(): Transaction {
+    return new Transaction(this.currentState)
+  }
+
+  dispatch(tr: Transaction): void {
+    const oldState = this.currentState
+    // ① filterTransaction：任一 false → 整体丢弃
+    for (const plugin of this.plugins) {
+      if (plugin.filterTransaction !== undefined && !plugin.filterTransaction(tr, oldState)) {
+        return
+      }
+    }
+    // ② apply
+    let newState = oldState.apply(tr)
+    // ③ appendTransaction：返回值继续 apply
+    for (const plugin of this.plugins) {
+      const appended = plugin.appendTransaction?.(tr, oldState, newState)
+      if (appended !== null && appended !== undefined) {
+        newState = newState.apply(appended)
+      }
+    }
+    // ④ 置 state
+    this.currentState = newState
+    // ⑤ history 收账（undo/redo 事务 addToHistory=false 自动跳过）
+    if (tr.addToHistory) {
+      this.historyPlugin.onTransaction(tr, oldState, newState)
+    }
+    // ⑥ renderer 同步
+    this.renderer?.syncState(newState, oldState)
+    const modeChanged = newState.mode !== oldState.mode
+    if (modeChanged) {
+      this.renderer?.setMode(newState.mode, oldState.mode)
+    }
+    // ⑦ 事件
+    for (const listener of [...this.listeners]) {
+      listener(newState, oldState)
+    }
+    this.emitter.emit('change', { state: newState, prev: oldState })
+    if (modeChanged) {
+      this.emitter.emit('change:mode', { mode: newState.mode, prevMode: oldState.mode })
+    }
+    if (!sameSelection(newState.selection, oldState.selection)) {
+      this.emitter.emit('change:selection', { selection: newState.selection })
+    }
+    if (!sameViewport(newState.viewport, oldState.viewport)) {
+      this.emitter.emit('change:viewport', { viewport: newState.viewport })
+    }
+    // 背景从有到无（含 undo 加载/换图）→ clearImage
+    if (oldState.doc.background !== null && newState.doc.background === null) {
+      this.emitter.emit('clearImage', {})
+    }
+    // ⑧ 其余插件 onTransaction
+    for (const plugin of this.plugins) {
+      if (plugin !== this.historyPlugin) {
+        plugin.onTransaction?.(tr, oldState, newState)
+      }
+    }
+  }
+
+  subscribe(listener: (state: EditorState, prev: EditorState) => void): () => void {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  on<K extends keyof EditorEventMap>(name: K, handler: (payload: EditorEventMap[K]) => void): void {
+    this.emitter.on(name, handler)
+  }
+
+  once<K extends keyof EditorEventMap>(name: K, handler: (payload: EditorEventMap[K]) => void): void {
+    this.emitter.once(name, handler)
+  }
+
+  off<K extends keyof EditorEventMap>(name: K, handler?: (payload: EditorEventMap[K]) => void): void {
+    this.emitter.off(name, handler)
+  }
+
+  // —— undo/redo ——
+
+  undo(): void {
+    const entry = this.historyPlugin.popUndo()
+    if (entry === null) {
+      return
+    }
+    this.dispatch(this.historyPlugin.makeTransaction(this.currentState, entry, 'undo'))
+    this.historyPlugin.pushRedo(entry)
+  }
+
+  redo(): void {
+    const entry = this.historyPlugin.popRedo()
+    if (entry === null) {
+      return
+    }
+    this.dispatch(this.historyPlugin.makeTransaction(this.currentState, entry, 'redo'))
+    this.historyPlugin.pushUndo(entry)
+  }
+
+  clearUndoStack(): void {
+    this.historyPlugin.clearUndo()
+  }
+
+  clearRedoStack(): void {
+    this.historyPlugin.clearRedo()
+  }
+
+  isEmptyUndoStack(): boolean {
+    return this.historyPlugin.undoSize === 0
+  }
+
+  isEmptyRedoStack(): boolean {
+    return this.historyPlugin.redoSize === 0
+  }
+
+  isEdited(): boolean {
+    return this.historyPlugin.undoSize > 0
+  }
+
+  // —— 图片加载 ——
+
+  /**
+   * 从 URL 加载背景图：探测原始宽高 → dispatch SetBackground → fire loadImage。
+   * 加载失败 reject 且 state 不变。
+   */
+  async loadImageFromURL(url: string, imageName: string): Promise<void> {
+    if (!url || !imageName) {
+      throw new Error('loadImageFromURL requires both url and imageName')
+    }
+    const img = await preloadImage(url)
+    const width = img.naturalWidth || img.width
+    const height = img.naturalHeight || img.height
+    const current = this.currentState.doc.background
+    if (current?.src === url && current.name === imageName && current.width === width && current.height === height && current.angle === 0)
+      return
+    this.dispatch(
+      this.newTransaction().addStep(new SetBackground({ src: url, width, height, name: imageName, angle: 0 })),
+    )
+    this.emitter.emit('loadImage', { name: imageName, width, height })
+  }
+
+  /** 从 File 加载背景图：FileReader → dataURL → loadImageFromURL。 */
+  async loadImageFromFile(imgFile: File, imageName?: string): Promise<void> {
+    const dataURL = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => {
+        reject(reader.error ?? new Error('failed to read image file'))
+      }
+      reader.readAsDataURL(imgFile)
+    })
+    await this.loadImageFromURL(dataURL, imageName ?? imgFile.name)
+  }
+
+  /** 贴一张新图片对象到画布（背景）中心；对齐旧 addImageObject 语义（left/top = 中心点）。 */
+  async addImageObject(imgUrl: string): Promise<void> {
+    if (!imgUrl) {
+      throw new Error('addImageObject requires an image url')
+    }
+    const bg = this.currentState.doc.background
+    if (bg === null) {
+      throw new Error('addImageObject requires a loaded background image')
+    }
+    const img = await preloadImage(imgUrl)
+    const width = img.naturalWidth || img.width
+    const height = img.naturalHeight || img.height
+    const object: ImageObject = {
+      id: createId(),
+      kind: 'image',
+      src: imgUrl,
+      width,
+      height,
+      left: bg.width / 2,
+      top: bg.height / 2,
+      angle: 0,
+      scaleX: 1,
+      scaleY: 1,
+    }
+    this.dispatch(this.newTransaction().addStep(new AddObject(object)).setSelection([object.id]))
+    this.emitter.emit('objectAdded', { object })
+  }
+
+  // —— 便捷查询 ——
+
+  getCurrentState(): EditorMode {
+    return this.currentState.mode
+  }
+
+  getImageName(): string {
+    return this.currentState.doc.background?.name ?? ''
+  }
+
+  /** 结束当前进行中的交互（裁剪/绘制等），回到 normal 模式。 */
+  endAll(): void {
+    this.dispatch(this.newTransaction().setMode('normal'))
+  }
+
+  // —— 旋转（TransformDoc，可撤销）——
+
+  /** 当前背景角度（度）；无背景返回 0。 */
+  getAngle(): number {
+    return this.currentState.doc.background?.angle ?? 0
+  }
+
+  /**
+   * 旋转到绝对角度（%360 归一，可撤销）：dispatch TransformDoc，
+   * 背景 angle + 外接框宽高与全部对象随转。无背景或归一后角度未变为 no-op
+   * （对齐旧 setAngle 的 reject 语义，改为静默 no-op）。
+   * rotateImage 事件语义由 change + change:viewport 覆盖，不单独设事件。
+   */
+  setAngle(angle: number): void {
+    const bg = this.currentState.doc.background
+    if (bg === null) {
+      return
+    }
+    const target = ((angle % 360) + 360) % 360
+    if (target === bg.angle) {
+      return
+    }
+    this.dispatch(this.newTransaction().addStep(new TransformDoc(target)))
+  }
+
+  /** 相对旋转 delta 度：setAngle(getAngle() + delta)（对齐旧 rotate 语义）。 */
+  rotate(delta: number): void {
+    this.setAngle(this.getAngle() + delta)
+  }
+
+  // —— 对象操作 ——
+
+  /** 删除当前选中对象（单选/多选逐个 RemoveObject，同事务）；每个被删对象 fire objectRemoved。 */
+  removeActiveObject(): void {
+    const selection = this.currentState.selection
+    if (selection.length === 0) {
+      return
+    }
+    const tr = this.newTransaction().setSelection([])
+    const removed: string[] = []
+    for (const id of selection) {
+      if (this.currentState.getObject(id) !== undefined) {
+        tr.addStep(new RemoveObject(id))
+        removed.push(id)
+      }
+    }
+    if (removed.length === 0) {
+      return
+    }
+    this.dispatch(tr)
+    for (const id of removed) {
+      this.emitter.emit('objectRemoved', { id })
+    }
+  }
+
+  /** 清空全部对象（ClearObjects step，可撤销），同时清空选中。 */
+  clearObjects(): void {
+    if (this.currentState.doc.objects.length === 0) {
+      return
+    }
+    this.dispatch(this.newTransaction().addStep(new ClearObjects()).setSelection([]))
+  }
+
+  /** 取消全部选中（dispatch setSelection([])，不进历史）。 */
+  deactivateAll(): void {
+    if (this.currentState.selection.length === 0) {
+      return
+    }
+    this.dispatch(this.newTransaction().setSelection([]).setMeta('addToHistory', false))
+  }
+
+  /**
+   * 设置选中集（图层面板点选/Shift 加选用）：过滤无效 id 并去重；与现选中集相同 no-op；
+   * 无 doc 变更不进历史，变化时触发 change:selection。
+   */
+  selectObjects(ids: string[]): void {
+    const objects = this.currentState.doc.objects
+    const valid: string[] = []
+    for (const id of ids) {
+      if (!valid.includes(id) && objects.some(o => o.id === id)) {
+        valid.push(id)
+      }
+    }
+    if (sameSelection(valid, this.currentState.selection)) {
+      return
+    }
+    this.dispatch(this.newTransaction().setSelection(valid).setMeta('addToHistory', false))
+  }
+
+  isSelectionControlAtPoint(x: number, y: number): boolean {
+    return this.fabricRenderer?.isSelectionControlAtPoint(x, y) ?? false
+  }
+
+  // —— 剪贴板（内部对象剪贴板，不操作系统剪贴板）——
+
+  /**
+   * 复制当前选中（单选/多选）到内部剪贴板（深拷贝，按 doc z 序）；
+   * 重置连续 paste 的级联偏移。无选中返回 false。
+   */
+  copyActiveObjects(): boolean {
+    const objects = this.selectedObjects()
+    if (objects.length === 0) {
+      return false
+    }
+    this.clipboard = structuredClone(objects)
+    this.pasteCascade = 1
+    return true
+  }
+
+  /**
+   * 粘贴内部剪贴板：每个对象深拷贝 + 新 id + left/top 偏移 +16×级联倍数
+   * （同一轮连续 paste 第 n 次偏移 16*n，copy/cut 后重置为 1）；
+   * 一笔 Transaction 多个 AddObject step 并选中粘贴结果（可一步撤销）。
+   * 剪贴板为空返回 false。
+   */
+  paste(): boolean {
+    if (this.clipboard.length === 0) {
+      return false
+    }
+    const offset = 16 * this.pasteCascade
+    this.pasteCascade += 1
+    this.pasteClones(this.clipboard, offset)
+    return true
+  }
+
+  /** 剪切 = copyActiveObjects 成功后一笔 Transaction 移除选中对象（RemoveObject steps）。 */
+  cutActiveObjects(): boolean {
+    if (!this.copyActiveObjects()) {
+      return false
+    }
+    const tr = this.newTransaction().setSelection([])
+    const removed: string[] = []
+    for (const id of this.currentState.selection) {
+      if (this.currentState.getObject(id) !== undefined) {
+        tr.addStep(new RemoveObject(id))
+        removed.push(id)
+      }
+    }
+    this.dispatch(tr)
+    for (const id of removed) {
+      this.emitter.emit('objectRemoved', { id })
+    }
+    return true
+  }
+
+  /** 与 paste 同语义（新 id + 偏移 +16 + 选中结果）但不读/不写剪贴板，偏移恒 +16。无选中返回 false。 */
+  duplicateActiveObjects(): boolean {
+    const objects = this.selectedObjects()
+    if (objects.length === 0) {
+      return false
+    }
+    this.pasteClones(objects, 16)
+    return true
+  }
+
+  /** 当前选中对象（按 doc z 序，过滤无效 id）。 */
+  private selectedObjects(): EditorObject[] {
+    const selected = new Set(this.currentState.selection)
+    return this.currentState.doc.objects.filter(o => selected.has(o.id))
+  }
+
+  /** 共用落盘路径：sources 逐个深拷贝 + 新 id + left/top += offset，一笔事务 AddObject 并选中。 */
+  private pasteClones(sources: readonly EditorObject[], offset: number): void {
+    const tr = this.newTransaction()
+    const pastedIds: string[] = []
+    for (const source of sources) {
+      const clone = structuredClone(source)
+      clone.id = createId()
+      clone.left += offset
+      clone.top += offset
+      tr.addStep(new AddObject(clone))
+      pastedIds.push(clone.id)
+    }
+    tr.setSelection(pastedIds)
+    this.dispatch(tr)
+  }
+
+  // —— z 序 ——
+
+  /** 选中对象（支持多选，保持相对顺序）置顶；无选中或已在顶 no-op 不 dispatch。 */
+  bringToFront(): void {
+    this.reorderActiveObjects('front')
+  }
+
+  /** 选中对象置底；无选中或已在底 no-op 不 dispatch。 */
+  sendToBack(): void {
+    this.reorderActiveObjects('back')
+  }
+
+  /** 选中对象上移一层；无选中或已紧邻顶层 no-op 不 dispatch。 */
+  bringForward(): void {
+    this.reorderActiveObjects('forward')
+  }
+
+  /** 选中对象下移一层；无选中或已紧邻底层 no-op 不 dispatch。 */
+  sendBackward(): void {
+    this.reorderActiveObjects('backward')
+  }
+
+  private reorderActiveObjects(action: ReorderAction): void {
+    const selection = this.currentState.selection
+    if (selection.length === 0) {
+      return
+    }
+    const doc = this.currentState.doc
+    const after = computeReorderedIds(doc, selection, action)
+    if (after === null) {
+      return
+    }
+    this.dispatch(
+      this.newTransaction().addStep(new ReorderObjects(doc.objects.map(o => o.id), after)),
+    )
+  }
+
+  /**
+   * 单对象移动到 objects 数组任意位置（ReorderObjects 落账，可撤销）。
+   * toIndex 为对象在最终数组中的下标（取整并 clamp [0, length-1]）；
+   * id 不存在或原位移动 no-op 不产历史。
+   */
+  moveObjectToIndex(objectId: string, toIndex: number): void {
+    const before = this.currentState.doc.objects.map(o => o.id)
+    if (!before.includes(objectId)) {
+      return
+    }
+    const rest = before.filter(id => id !== objectId)
+    const target = Math.max(0, Math.min(Math.round(toIndex), rest.length))
+    const after = [...rest.slice(0, target), objectId, ...rest.slice(target)]
+    if (after.every((id, i) => id === before[i])) {
+      return
+    }
+    this.dispatch(this.newTransaction().addStep(new ReorderObjects(before, after)))
+  }
+
+  // —— 滤镜与图像调整（SetFilters，可撤销；mergeKey 连续调用合并为一个 undo 条目）——
+
+  /**
+   * 合并设置背景图滤镜：patch 叠加在现有 filters（缺省 DEFAULT_FILTERS）之上，
+   * dispatch SetFilters（可撤销）。无背景或合并后未变为 no-op。
+   * opts.mergeKey 透传事务 meta：连续同 key 调用在 History 里合并为一个 undo 条目
+   * （滑杆连续拖动场景）。
+   */
+  setBackgroundFilters(filters: Partial<FilterSettings>, opts?: { mergeKey?: string }): void {
+    const bg = this.currentState.doc.background
+    if (bg === null) {
+      return
+    }
+    this.setFiltersOn('background', bg.filters, filters, opts)
+  }
+
+  /** 合并设置某个 image 对象的滤镜；对象不存在或非 image 为 no-op。语义同 setBackgroundFilters。 */
+  setImageFilters(objectId: string, filters: Partial<FilterSettings>, opts?: { mergeKey?: string }): void {
+    const obj = this.currentState.getObject(objectId)
+    if (obj === undefined || obj.kind !== 'image') {
+      return
+    }
+    this.setFiltersOn(objectId, obj.filters, filters, opts)
+  }
+
+  /** 移除背景图滤镜（filters 置 undefined，恢复默认，可撤销）；已无滤镜为 no-op。 */
+  resetBackgroundFilters(): void {
+    const bg = this.currentState.doc.background
+    if (bg === null || bg.filters === undefined) {
+      return
+    }
+    this.dispatch(this.newTransaction().addStep(new SetFilters('background', bg.filters, undefined)))
+  }
+
+  /** 移除某个 image 对象的滤镜（可撤销）；对象不存在、非 image 或已无滤镜为 no-op。 */
+  resetImageFilters(objectId: string): void {
+    const obj = this.currentState.getObject(objectId)
+    if (obj === undefined || obj.kind !== 'image' || obj.filters === undefined) {
+      return
+    }
+    this.dispatch(this.newTransaction().addStep(new SetFilters(objectId, obj.filters, undefined)))
+  }
+
+  /** setBackgroundFilters / setImageFilters 共用落账路径：合并 patch → no-op 判定 → dispatch。 */
+  private setFiltersOn(
+    target: 'background' | string,
+    current: FilterSettings | undefined,
+    patch: Partial<FilterSettings>,
+    opts?: { mergeKey?: string },
+  ): void {
+    const after: FilterSettings = { ...DEFAULT_FILTERS, ...current, ...patch }
+    // current 缺省按 DEFAULT_FILTERS 参与比较：「无滤镜 + 全默认 patch」不产生历史条目
+    if (sameFilters(current ?? DEFAULT_FILTERS, after)) {
+      return
+    }
+    const tr = this.newTransaction().addStep(new SetFilters(target, current, after))
+    if (opts?.mergeKey !== undefined) {
+      tr.setMeta('mergeKey', opts.mergeKey)
+    }
+    this.dispatch(tr)
+  }
+
+  // —— 翻转 ——
+
+  /**
+   * 翻转当前选中对象（单选/多选，一笔 Transaction 多个 UpdateObject）：
+   * horizontal 取负 scaleX，vertical 取负 scaleY。无选中返回 false。
+   */
+  flipActiveObjects(axis: 'horizontal' | 'vertical'): boolean {
+    const objects = this.selectedObjects()
+    if (objects.length === 0) {
+      return false
+    }
+    const key = axis === 'horizontal' ? 'scaleX' : 'scaleY'
+    const tr = this.newTransaction()
+    for (const obj of objects) {
+      tr.addStep(new UpdateObject(obj.id, { [key]: -obj[key] }))
+    }
+    this.dispatch(tr)
+    return true
+  }
+
+  // —— 对齐与分布（逐对象 UpdateObject 一笔事务，可撤销）——
+
+  /**
+   * 对齐当前选中对象（≥2，locked 不参与、过滤后不足返回 false）：
+   * 以选中集整体 bbox 的对应边/中心为基准，逐对象平移到对齐位（一笔事务，undo 一步全回）。
+   * bbox 为未旋转外接框（angle 忽略；text/path 尺寸为近似值，见 README「对齐与分布」）；
+   * 已全部对齐为 no-op 返回 false（不产历史）。
+   */
+  alignActiveObjects(edge: 'left' | 'centerX' | 'right' | 'top' | 'centerY' | 'bottom'): boolean {
+    const objects = this.selectedObjects().filter(obj => obj.locked !== true)
+    if (objects.length < 2) {
+      return false
+    }
+    const boxes = objects.map(obj => objectBBox(obj))
+    const horizontal = edge === 'left' || edge === 'centerX' || edge === 'right'
+    const startOf = (box: { left: number, top: number }): number => (horizontal ? box.left : box.top)
+    const endOf = (box: { left: number, top: number, width: number, height: number }): number =>
+      horizontal ? box.left + box.width : box.top + box.height
+    const spanStart = Math.min(...boxes.map(startOf))
+    const spanEnd = Math.max(...boxes.map(endOf))
+    const edgeOf = (box: (typeof boxes)[number]): number => {
+      switch (edge) {
+        case 'left':
+        case 'top':
+          return startOf(box)
+        case 'centerX':
+        case 'centerY':
+          return (startOf(box) + endOf(box)) / 2
+        default:
+          return endOf(box)
+      }
+    }
+    const target = edge === 'left' || edge === 'top'
+      ? spanStart
+      : edge === 'right' || edge === 'bottom'
+        ? spanEnd
+        : (spanStart + spanEnd) / 2
+    const tr = this.newTransaction()
+    let changed = false
+    objects.forEach((obj, index) => {
+      const delta = target - edgeOf(boxes[index])
+      if (Math.abs(delta) > 1e-9) {
+        tr.addStep(new UpdateObject(obj.id, horizontal ? { left: obj.left + delta } : { top: obj.top + delta }))
+        changed = true
+      }
+    })
+    if (!changed) {
+      return false
+    }
+    this.dispatch(tr)
+    return true
+  }
+
+  /**
+   * 等间距分布当前选中对象（≥3，locked 不参与、过滤后不足返回 false）：
+   * 按轴心排序后两端对象固定，中间对象均分间隙（总间隙 = 两端跨度 − 各对象尺寸和，
+   * 对象重叠时间隙可为负）；一笔事务，undo 一步全回。已全部等距为 no-op 返回 false。
+   */
+  distributeActiveObjects(axis: 'horizontal' | 'vertical'): boolean {
+    const objects = this.selectedObjects().filter(obj => obj.locked !== true)
+    if (objects.length < 3) {
+      return false
+    }
+    const horizontal = axis === 'horizontal'
+    const items = objects.map(obj => ({ obj, box: objectBBox(obj) }))
+    const startOf = (box: (typeof items)[number]['box']): number => (horizontal ? box.left : box.top)
+    const sizeOf = (box: (typeof items)[number]['box']): number => (horizontal ? box.width : box.height)
+    items.sort((a, b) => startOf(a.box) + sizeOf(a.box) / 2 - (startOf(b.box) + sizeOf(b.box) / 2))
+    const spanStart = startOf(items[0].box)
+    const last = items[items.length - 1]
+    const spanEnd = startOf(last.box) + sizeOf(last.box)
+    const totalSize = items.reduce((sum, item) => sum + sizeOf(item.box), 0)
+    const gap = (spanEnd - spanStart - totalSize) / (items.length - 1)
+    const tr = this.newTransaction()
+    let changed = false
+    let cursor = spanStart
+    for (const item of items) {
+      const delta = cursor - startOf(item.box)
+      if (Math.abs(delta) > 1e-9) {
+        tr.addStep(
+          new UpdateObject(item.obj.id, horizontal ? { left: item.obj.left + delta } : { top: item.obj.top + delta }),
+        )
+        changed = true
+      }
+      cursor += sizeOf(item.box) + gap
+    }
+    if (!changed) {
+      return false
+    }
+    this.dispatch(tr)
+    return true
+  }
+
+  // —— 图层属性（不透明度 / 锁定 / 隐藏，UpdateObject 落账，可撤销）——
+
+  /**
+   * 设置一组对象的不透明度（clamp 0..1，可撤销）；已是目标值的对象跳过，
+   * 全部无变化为 no-op。opts.mergeKey 透传事务 meta：滑杆连续拖动合并为一个 undo 条目。
+   */
+  setObjectOpacity(ids: string[], opacity: number, opts?: { mergeKey?: string }): void {
+    const clamped = Math.max(0, Math.min(1, opacity))
+    const tr = this.newTransaction()
+    let changed = false
+    for (const id of ids) {
+      const obj = this.currentState.getObject(id)
+      if (obj !== undefined && (obj.opacity ?? 1) !== clamped) {
+        tr.addStep(new UpdateObject(id, { opacity: clamped }))
+        changed = true
+      }
+    }
+    if (!changed) {
+      return
+    }
+    if (opts?.mergeKey !== undefined) {
+      tr.setMeta('mergeKey', opts.mergeKey)
+    }
+    this.dispatch(tr)
+  }
+
+  /** 切换对象锁定态（可撤销）；对象不存在 no-op。锁定语义见 README「图层属性」。 */
+  toggleObjectLocked(id: string): void {
+    const obj = this.currentState.getObject(id)
+    if (obj === undefined) {
+      return
+    }
+    this.dispatch(this.newTransaction().addStep(new UpdateObject(id, { locked: !(obj.locked ?? false) })))
+  }
+
+  /**
+   * 登记或更新一条测量图层。线由 Fabric 按图层绘制，覆盖层只保留可拖节点。
+   * opacity 仅在创建或调用方显式传入时写入，避免覆盖图层面板里的单独调整。
+   */
+  upsertMeasurementLayer(id: string, path: string, opacity?: number, style?: { color?: string, dash?: number[], name?: string, width?: number, kind?: PathObject['measurementKind'], points?: Point[], measurementArc?: MeasurementArc, measurementLabel?: MeasurementLabel, measurementEndpoints?: MeasurementEndpoints, measurementPrecision?: number }): void {
+    const existing = this.currentState.getObject(id)
+    if (existing === undefined) {
+      const { left, top } = probePathPosition(path, style?.width ?? 1)
+      const object: PathObject = {
+        angle: 0,
+        fill: 'transparent',
+        id,
+        kind: 'path',
+        left,
+        opacity: opacity ?? 1,
+        path,
+        scaleX: 1,
+        scaleY: 1,
+        measurementKind: style?.kind,
+        measurementName: style?.name,
+        measurementPoints: style?.points,
+        measurementArc: style?.measurementArc,
+        measurementLabel: style?.measurementLabel,
+        measurementEndpoints: style?.measurementEndpoints,
+        measurementPrecision: style?.measurementPrecision,
+        stroke: style?.color ?? '#0d99ff',
+        strokeDash: style?.dash,
+        strokeWidth: style?.width ?? 1,
+        tool: 'measurement',
+        top,
+      }
+      this.dispatch(this.newTransaction().addStep(new AddObject(object)).setSelection([object.id]))
+      return
+    }
+    if (existing.kind !== 'path')
+      return
+    const pathChanged = existing.path !== path
+    const opacityChanged = opacity !== undefined && (existing.opacity ?? 1) !== opacity
+    const colorChanged = style?.color !== undefined && existing.stroke !== style.color
+    const widthChanged = style?.width !== undefined && existing.strokeWidth !== style.width
+    const dashChanged = style?.dash !== undefined && JSON.stringify(existing.strokeDash ?? []) !== JSON.stringify(style.dash)
+    const pointsChanged = style?.points !== undefined && JSON.stringify(existing.measurementPoints ?? []) !== JSON.stringify(style.points) && existing.scaleX === 1 && existing.scaleY === 1 && existing.angle === 0
+    const endpointsChanged = style?.measurementEndpoints !== undefined && JSON.stringify(existing.measurementEndpoints) !== JSON.stringify(style.measurementEndpoints)
+    const precisionChanged = style?.measurementPrecision !== undefined && existing.measurementPrecision !== style.measurementPrecision
+    if (!pathChanged && !opacityChanged && !colorChanged && !widthChanged && !dashChanged && !pointsChanged && !endpointsChanged && !precisionChanged)
+      return
+    const nextStrokeWidth = style?.width ?? existing.strokeWidth
+    const { left, top } = pathChanged
+      ? probePathPosition(path, nextStrokeWidth)
+      : widthChanged
+        ? pathPositionAfterStrokeWidthChange(existing, nextStrokeWidth)
+        : { left: existing.left, top: existing.top }
+    this.dispatch(this.newTransaction().addStep(new UpdateObject(id, {
+      ...(opacityChanged ? { opacity } : {}),
+      ...(pathChanged ? { path } : {}),
+      ...(pathChanged || widthChanged ? { left, top } : {}),
+      ...(colorChanged ? { stroke: style?.color } : {}),
+      ...(widthChanged ? { strokeWidth: style?.width } : {}),
+      ...(dashChanged ? { strokeDash: style?.dash } : {}),
+      ...(pointsChanged ? { measurementPoints: style?.points } : {}),
+      ...(endpointsChanged ? { measurementEndpoints: style?.measurementEndpoints } : {}),
+      ...(precisionChanged ? { measurementPrecision: style?.measurementPrecision } : {}),
+    })))
+  }
+
+  /** 节点手势预览只更新渲染投影；释放鼠标时统一提交文档。 */
+  previewMeasurementPoints(id: string, points: { x: number, y: number }[]): void {
+    const existing = this.currentState.getObject(id)
+    const target = this.fabricRenderer?.getObjectsByIds([id])[0]
+    if (existing?.kind !== 'path' || !target)
+      return
+    const path = buildMeasurementPath(existing.measurementKind ?? 'line', points, existing.measurementArc?.radius, existing.measurementArc?.style)
+    updateFabricObject(target, { ...existing, ...probePathPosition(path, existing.strokeWidth), path, measurementPoints: points })
+    this.fabricRenderer?.canvas.requestRenderAll()
+  }
+
+  /** 注解控件拖动期间仅更新 Fabric 投影，不写文档和历史。 */
+  previewMeasurementAnnotation(
+    id: string,
+    patch: { measurementArc?: MeasurementArc, measurementLabel?: MeasurementLabel, measurementEndpoints?: MeasurementEndpoints, measurementPrecision?: number },
+  ): void {
+    const existing = this.currentState.getObject(id)
+    const target = this.fabricRenderer?.getObjectsByIds([id])[0]
+    if (existing?.kind !== 'path' || existing.tool !== 'measurement' || !target) {
+      return
+    }
+    const next: PathObject = { ...existing, ...patch }
+    if (patch.measurementArc !== undefined && next.measurementPoints !== undefined) {
+      next.path = buildMeasurementPath(next.measurementKind ?? 'line', next.measurementPoints, patch.measurementArc.radius, patch.measurementArc.style)
+      Object.assign(next, probePathPosition(next.path, next.strokeWidth))
+    }
+    updateFabricObject(target, next)
+    this.fabricRenderer?.canvas.requestRenderAll()
+  }
+
+  /** 提交测量弧线/标签注解；弧线变化同步重建 path 与定位。 */
+  changeMeasurementAnnotation(
+    id: string,
+    patch: { measurementArc?: MeasurementArc, measurementLabel?: MeasurementLabel, measurementEndpoints?: MeasurementEndpoints, measurementPrecision?: number },
+    options?: { mergeKey?: string },
+  ): void {
+    const existing = this.currentState.getObject(id)
+    if (existing?.kind !== 'path' || existing.tool !== 'measurement') {
+      return
+    }
+    if (Object.entries(patch).every(([key, value]) => JSON.stringify(existing[key as keyof PathObject]) === JSON.stringify(value))) {
+      return
+    }
+    const attrs: ObjectAttrs = { ...patch }
+    if (patch.measurementArc !== undefined && existing.measurementPoints !== undefined) {
+      const path = buildMeasurementPath(
+        existing.measurementKind ?? 'line',
+        existing.measurementPoints,
+        patch.measurementArc.radius,
+        patch.measurementArc.style,
+      )
+      Object.assign(attrs, probePathPosition(path, existing.strokeWidth), { path })
+    }
+    const tr = this.newTransaction().addStep(new UpdateObject(id, attrs))
+    if (options?.mergeKey !== undefined) {
+      tr.setMeta('mergeKey', options.mergeKey)
+    }
+    this.dispatch(tr)
+  }
+
+  /** 删除一条测量图层；对象不存在时 no-op。 */
+  removeMeasurementLayer(id: string): void {
+    if (this.currentState.getObject(id) === undefined)
+      return
+    this.dispatch(this.newTransaction().addStep(new RemoveObject(id)))
+  }
+
+  /** 切换对象隐藏态（可撤销）；对象不存在 no-op。隐藏语义见 README「图层属性」。 */
+  toggleObjectHidden(id: string): void {
+    const obj = this.currentState.getObject(id)
+    if (obj === undefined) {
+      return
+    }
+    this.dispatch(this.newTransaction().addStep(new UpdateObject(id, { hidden: !(obj.hidden ?? false) })))
+  }
+
+  // —— 视口（zoom/pan）——
+
+  /**
+   * 设置缩放倍率（clamp [0.1, 50]）；viewport 事务默认入历史（对齐现状可撤销）。
+   * 支点恒为容器中心：pan 按 zoom 比例同步缩放（pan' = pan·zoom'/zoom），
+   * 使容器中心下的 doc 点在缩放前后不动（有图/无图均成立，居中项随 s 线性）。
+   */
+  setZoom(rate: number): void {
+    const zoom = Math.min(Math.max(rate, ZOOM_MIN), ZOOM_MAX)
+    const vp = this.currentState.viewport
+    if (zoom === vp.zoom) {
+      return
+    }
+    const ratio = zoom / vp.zoom // vp.zoom ∈ [ZOOM_MIN, ZOOM_MAX]，不会为 0
+    this.dispatch(this.newTransaction().setViewport({ zoom, panX: vp.panX * ratio, panY: vp.panY * ratio }))
+  }
+
+  /**
+   * 按容器内的指针位置缩放，保持该指针下的图片像素不动。
+   * 按钮缩放仍走 setZoom（容器中心不动）。
+   */
+  setZoomAt(rate: number, pointerX: number, pointerY: number): void {
+    const renderer = this.fabricRenderer as unknown as {
+      zoomAtPointer?: (zoom: number, pointerX: number, pointerY: number) => void
+    } | undefined
+    renderer?.zoomAtPointer?.(rate, pointerX, pointerY)
+  }
+
+  getZoom(): number {
+    return this.currentState.viewport.zoom
+  }
+
+  /**
+   * 当前图像相对于源像素的实际显示倍率。viewport.zoom 只是相对于
+   * 适应窗口倍率的调节值；有背景时必须乘以 renderer 的 fitScale。
+   */
+  getPixelZoom(): number {
+    const fitScale = this.fabricRenderer?.fitScale(this.currentState) ?? 1
+    return fitScale * this.currentState.viewport.zoom
+  }
+
+  /** 按实际像素倍率设置视口缩放，保持平移支点和现有历史语义。 */
+  setPixelZoom(rate: number): void {
+    const fitScale = this.fabricRenderer?.fitScale(this.currentState) ?? 1
+    this.setZoom(rate / (fitScale > 0 ? fitScale : 1))
+  }
+
+  /** 百分比按钮：回到 100% 实际像素倍率，同时清除平移，让图像回到视口中心。 */
+  resetZoom(): void {
+    const viewport = this.currentState.viewport
+    // fitScale 已负责“大图适应窗口、小图保持 1:1、极小图有限放大”；
+    // 复位只需回到相对于该 fit 倍率的 1 倍视口倍率。
+    const zoom = 1
+    if (viewport.zoom === zoom && viewport.panX === 0 && viewport.panY === 0)
+      return
+    this.dispatch(this.newTransaction().setViewport({ zoom, panX: 0, panY: 0 }))
+  }
+
+  /** 更新马赛克块边长；工具激活时立即生效，未激活时由 UI 设置在下次进入时传入。 */
+  setMosaicDimensions(dimensions?: number): void {
+    this.mosaicController?.setDimensions(dimensions)
+  }
+
+  /** 进入平移模式（mode 'pan'，拖动画布平移，瞬时不入历史；光标 grab/grabbing）。 */
+  startPan(): void {
+    if (this.currentState.mode === 'pan') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('pan'))
+  }
+
+  /** 退出平移模式，回到 normal。 */
+  endPan(): void {
+    if (this.currentState.mode !== 'pan') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('normal'))
+  }
+
+  // —— 绘制（freedraw / line / arrow）——
+
+  /**
+   * 进入自由绘制模式（mode 'freedraw'）；setting 先写入 controller 再切 mode。
+   * 已在 freedraw 模式时为 no-op（对齐旧 startFreeDrawing）。
+   */
+  startFreeDrawing(setting?: { width?: number, color?: string }): void {
+    if (this.currentState.mode === 'freedraw') {
+      return
+    }
+    if (setting !== undefined) {
+      this.drawController?.setBrush(setting)
+    }
+    this.dispatch(this.newTransaction().setMode('freedraw'))
+  }
+
+  /** 退出自由绘制模式，回到 normal。 */
+  endFreeDrawing(): void {
+    if (this.currentState.mode !== 'freedraw') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('normal'))
+  }
+
+  /** 进入直线绘制模式（mode 'line'）。 */
+  startLineDrawing(setting?: { width?: number, color?: string, dash?: number[] }): void {
+    if (this.currentState.mode === 'line') {
+      return
+    }
+    if (setting !== undefined) {
+      this.lineController?.setBrush(setting)
+    }
+    this.dispatch(this.newTransaction().setMode('line'))
+  }
+
+  /** 退出直线绘制模式，回到 normal。 */
+  endLineDrawing(): void {
+    if (this.currentState.mode !== 'line') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('normal'))
+  }
+
+  /** 进入箭头绘制模式（mode 'arrow'）。 */
+  startArrowDrawing(setting?: { width?: number, color?: string, dash?: number[], startHead?: ArrowHeadStyle, endHead?: ArrowHeadStyle, headLength?: number, headWidth?: number }): void {
+    if (setting !== undefined) {
+      this.arrowController?.setBrush(setting)
+    }
+    if (this.currentState.mode === 'arrow') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('arrow'))
+  }
+
+  /** 退出箭头绘制模式，回到 normal。 */
+  endArrowDrawing(): void {
+    if (this.currentState.mode !== 'arrow') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('normal'))
+  }
+
+  /** 按当前 mode 路由 setBrush 到 draw/line/arrow controller；非绘制模式 no-op。 */
+  setBrush(setting: { width?: number, color?: string, dash?: number[], startHead?: ArrowHeadStyle, endHead?: ArrowHeadStyle, headLength?: number, headWidth?: number }): void {
+    switch (this.currentState.mode) {
+      case 'freedraw':
+        this.drawController?.setBrush(setting)
+        break
+      case 'line':
+        this.lineController?.setBrush(setting)
+        break
+      case 'arrow':
+        this.arrowController?.setBrush(setting)
+        break
+    }
+  }
+
+  /** 修改选中 freedraw/line 路径的样式（stroke/strokeWidth，可撤销）。 */
+  changeFreeDrawingPathStyle(setting?: { width?: number, color?: string, dash?: number[] }): void {
+    this.changeSelectedPathStyle(['freedraw', 'line', 'measurement'], setting)
+  }
+
+  /** 修改选中测量对象的线型（可撤销）。 */
+  changeMeasurementStyle(setting: { dash?: number[] }): void {
+    this.changeSelectedPathStyle(['measurement'], setting)
+  }
+
+  /** 修改选中 arrow 的线条、端点样式及头部尺寸（可撤销）。 */
+  changeArrowStyle(setting?: {
+    width?: number
+    color?: string
+    dash?: number[]
+    startHead?: ArrowHeadStyle
+    endHead?: ArrowHeadStyle
+    headLength?: number
+    headWidth?: number
+  }): void {
+    if (setting === undefined) {
+      return
+    }
+    const tr = this.newTransaction()
+    for (const id of this.currentState.selection) {
+      const obj = this.currentState.getObject(id)
+      if (obj?.kind !== 'path' || obj.tool !== 'arrow') {
+        continue
+      }
+      const attrs: ObjectAttrs = {}
+      if (setting.color !== undefined) {
+        attrs.stroke = setting.color
+        attrs.fill = setting.color
+      }
+      if (setting.width !== undefined)
+        attrs.strokeWidth = setting.width
+      if (setting.dash !== undefined)
+        attrs.strokeDash = setting.dash
+      if (setting.startHead !== undefined)
+        attrs.startHead = setting.startHead
+      if (setting.endHead !== undefined)
+        attrs.endHead = setting.endHead
+      if (setting.headLength !== undefined)
+        attrs.headLength = setting.headLength
+      if (setting.headWidth !== undefined)
+        attrs.headWidth = setting.headWidth
+      const geometry = arrowGeometryFromObject({ ...obj, ...attrs } as PathObject)
+      if (geometry !== null) {
+        const path = buildArrowPath(geometry)
+        Object.assign(attrs, probePathPosition(path, setting.width ?? obj.strokeWidth), { path })
+      }
+      else if (setting.width !== undefined) {
+        Object.assign(attrs, pathPositionAfterStrokeWidthChange(obj, setting.width))
+      }
+      if (Object.keys(attrs).some(key => (obj as unknown as Record<string, unknown>)[key] !== attrs[key])) {
+        tr.addStep(new UpdateObject(id, attrs))
+      }
+    }
+    if (tr.steps.length > 0) {
+      this.dispatch(tr)
+    }
+  }
+
+  /** 更新选中箭头的绝对端点/头部尺寸；连续拖动传同一 mergeKey 可合并为一步 undo。 */
+  changeArrowGeometry(
+    setting: { start?: Point, end?: Point, headLength?: number, headWidth?: number },
+    options?: { mergeKey?: string },
+  ): void {
+    const tr = this.newTransaction()
+    for (const id of this.currentState.selection) {
+      const obj = this.currentState.getObject(id)
+      if (obj?.kind !== 'path' || obj.tool !== 'arrow') {
+        continue
+      }
+      const current = arrowGeometryFromObject(obj)
+      if (current === null) {
+        continue
+      }
+      const geometry = {
+        ...current,
+        start: setting.start ?? current.start,
+        end: setting.end ?? current.end,
+        headLength: setting.headLength ?? current.headLength,
+        headWidth: setting.headWidth ?? current.headWidth,
+      }
+      const path = buildArrowPath(geometry)
+      tr.addStep(new UpdateObject(id, {
+        angle: 0,
+        arrowStart: geometry.start,
+        arrowEnd: geometry.end,
+        headLength: geometry.headLength,
+        headWidth: geometry.headWidth,
+        ...probePathPosition(path, obj.strokeWidth),
+        path,
+        scaleX: 1,
+        scaleY: 1,
+      }))
+    }
+    if (tr.steps.length === 0) {
+      return
+    }
+    if (options?.mergeKey !== undefined) {
+      tr.setMeta('mergeKey', options.mergeKey)
+    }
+    this.dispatch(tr)
+  }
+
+  // —— 形状（rect / circle / triangle）——
+
+  /** 进入形状绘制模式（mode 'shape'）；形状类型与样式由 setDrawingShape 预设。 */
+  startDrawingShapeMode(): void {
+    if (this.currentState.mode === 'shape') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('shape'))
+  }
+
+  /** 退出形状绘制模式，回到 normal。 */
+  endDrawingShapeMode(): void {
+    if (this.currentState.mode !== 'shape') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('normal'))
+  }
+
+  /** 记录当前绘制形状的类型与样式（影响下一次拖出的对象）；无头模式为 no-op。 */
+  setDrawingShape(
+    type: ShapeObject['shapeType'],
+    options?: { fill?: string, stroke?: string, strokeWidth?: number, strokeDash?: number[] },
+  ): void {
+    this.shapeController?.setShape(type, options)
+  }
+
+  /**
+   * 直接添加一个形状对象（可撤销）并 fire objectAdded。
+   * left/top 缺省取画布中心（doc 坐标；对齐旧 addShape 的 canvas.getCenter 语义，
+   * 无头模式退化到 0,0）；width/height 缺省 100，样式缺省 白底/黑边/1px。
+   */
+  addShape(
+    type: ShapeObject['shapeType'],
+    options?: Partial<Pick<ShapeObject, 'left' | 'top' | 'width' | 'height' | 'fill' | 'stroke' | 'strokeWidth' | 'strokeDash'>>,
+  ): void {
+    let left = options?.left
+    let top = options?.top
+    if (left === undefined || top === undefined) {
+      const info = this.getViewPortInfo()
+      left ??= info.left + info.width / 2
+      top ??= info.top + info.height / 2
+    }
+    const object: ShapeObject = {
+      id: createId(),
+      kind: 'shape',
+      shapeType: type,
+      left,
+      top,
+      width: options?.width ?? 100,
+      height: options?.height ?? 100,
+      angle: 0,
+      scaleX: 1,
+      scaleY: 1,
+      fill: options?.fill ?? '#ffffff',
+      stroke: options?.stroke ?? '#000000',
+      strokeWidth: options?.strokeWidth ?? 1,
+      strokeDash: options?.strokeDash,
+    }
+    this.dispatch(this.newTransaction().addStep(new AddObject(object)).setSelection([object.id]))
+    this.emitter.emit('objectAdded', { object })
+  }
+
+  /** 修改选中 shape 对象的样式（fill/stroke/strokeWidth，可撤销）；无匹配对象或空配置为 no-op。 */
+  changeShape(options: { fill?: string, stroke?: string, strokeWidth?: number, strokeDash?: number[] }): void {
+    const attrs: ObjectAttrs = {}
+    if (options.fill !== undefined) {
+      attrs.fill = options.fill
+    }
+    if (options.stroke !== undefined) {
+      attrs.stroke = options.stroke
+    }
+    if (options.strokeWidth !== undefined) {
+      attrs.strokeWidth = options.strokeWidth
+    }
+    if (options.strokeDash !== undefined) {
+      attrs.strokeDash = options.strokeDash
+    }
+    if (Object.keys(attrs).length === 0) {
+      return
+    }
+    const tr = this.newTransaction()
+    let changed = false
+    for (const id of this.currentState.selection) {
+      const obj = this.currentState.getObject(id)
+      if (obj !== undefined && obj.kind === 'shape') {
+        tr.addStep(new UpdateObject(id, attrs))
+        changed = true
+      }
+    }
+    if (changed) {
+      this.dispatch(tr)
+    }
+  }
+
+  // —— 马赛克（涂抹取平均色）——
+
+  /**
+   * 进入马赛克涂抹模式（mode 'mosaic'）；dimensions 为涂抹块边长（doc 像素，默认 8，
+   * 对齐旧 startMosaicDrawing 缺省）。已在 mosaic 模式时为 no-op（对齐旧实现）。
+   */
+  startMosaicDrawing(setting?: { dimensions?: number }): void {
+    if (this.currentState.mode === 'mosaic') {
+      return
+    }
+    if (setting !== undefined) {
+      this.mosaicController?.setDimensions(setting.dimensions)
+    }
+    this.dispatch(this.newTransaction().setMode('mosaic'))
+  }
+
+  /** 退出马赛克涂抹模式，回到 normal。 */
+  endMosaicDrawing(): void {
+    if (this.currentState.mode !== 'mosaic') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('normal'))
+  }
+
+  // —— 裁剪（cropzone 蚂蚁线 + 矩形直裁，两条路径统一可撤销）——
+
+  /**
+   * 进入裁剪模式（mode 'crop'）：出现背景图 80% 的蚂蚁线裁剪框，可拖动/缩放
+   * （clamp 在背景范围内），Shift 拖空白重画锁正方形。已在 crop 模式时为 no-op。
+   */
+  startCropping(): void {
+    if (this.currentState.mode === 'crop') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('crop'))
+  }
+
+  /**
+   * 结束裁剪。isApplying=true（默认）：cropzone 无效（isValid false）→ 直接退出；
+   * 有效 → 导出裁剪矩形为新背景（SetBackground，可撤销；对象清空对齐旧换图语义）。
+   * isApplying=false：丢弃裁剪框退出。endCropping 语义由 change:mode 事件覆盖。
+   */
+  endCropping(isApplying = true): void {
+    if (this.currentState.mode !== 'crop') {
+      return
+    }
+    const cropInfo = isApplying ? this.cropController?.getCropInfo() : undefined
+    if (cropInfo === undefined) {
+      this.dispatch(this.newTransaction().setMode('normal'))
+      return
+    }
+    this.cropController?.applyCrop(cropInfo)
+  }
+
+  /**
+   * 进入无 UI 的矩形裁剪模式（对齐旧 startCropByBoundInfo：仅切 mode，不出裁剪框）；
+   * 配合 endCropByBoundInfo(cropInfo) 使用。已在 crop 模式时为 no-op。
+   */
+  startCropByBoundInfo(): void {
+    if (this.currentState.mode === 'crop') {
+      return
+    }
+    this.cropController?.suppressCropzoneUI()
+    this.dispatch(this.newTransaction().setMode('crop'))
+  }
+
+  /**
+   * 按 cropInfo（doc 坐标，缺省 = 整图）裁剪：与 endCropping(true) 同一
+   * SetBackground 落盘路径，可撤销。无背景或无头模式下仅退出模式。
+   */
+  endCropByBoundInfo(cropInfo?: { left: number, top: number, width: number, height: number }): void {
+    if (this.currentState.mode !== 'crop') {
+      return
+    }
+    const bg = this.currentState.doc.background
+    if (this.cropController === undefined || bg === null) {
+      this.dispatch(this.newTransaction().setMode('normal'))
+      return
+    }
+    this.cropController.applyCrop(cropInfo ?? { left: 0, top: 0, width: bg.width, height: bg.height })
+  }
+
+  // —— 文本（IText 原地编辑）——
+
+  /** 进入文本模式（mode 'text'）：点击画布空白在该点新建文本并进入编辑，双击已有文本再编辑。 */
+  startTextMode(): void {
+    if (this.currentState.mode === 'text') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('text'))
+  }
+
+  /** 退出文本模式，回到 normal（编辑中的文本先提交）。 */
+  endTextMode(): void {
+    if (this.currentState.mode !== 'text') {
+      return
+    }
+    this.dispatch(this.newTransaction().setMode('normal'))
+  }
+
+  /**
+   * 添加文本对象（可撤销）并 fire objectAdded；非 text 模式时顺带切到 text 模式（对齐旧 addText）。
+   * text 缺省「双击编辑」；position 缺省画布中心（doc 坐标，无头模式退化到 0,0）；
+   * defaultEdit=true 时创建后立即进入编辑（无头模式为 no-op）。
+   */
+  addText(
+    text?: string,
+    options?: { styles?: TextStyleOptions, position?: { x: number, y: number } },
+        defaultEdit = false,
+  ): void {
+    let left: number
+    let top: number
+    if (options?.position !== undefined) {
+      left = options.position.x
+      top = options.position.y
+    }
+    else {
+      const info = this.getViewPortInfo()
+      left = info.left + info.width / 2
+      top = info.top + info.height / 2
+    }
+    const object = createTextObject(text ?? DEFAULT_TEXT, left, top, options?.styles)
+    const tr = this.newTransaction().addStep(new AddObject(object)).setSelection([object.id])
+    if (this.currentState.mode !== 'text') {
+      tr.setMode('text')
+    }
+    this.dispatch(tr)
+    this.emitter.emit('objectAdded', { object })
+    if (defaultEdit) {
+      this.textController?.editObject(object.id)
+    }
+  }
+
+  /** 修改选中文本（含编辑中的文本）的内容（可撤销）；无目标或内容未变为 no-op。 */
+  changeText(text: string): void {
+    const tr = this.newTransaction()
+    let changed = false
+    for (const id of this.textTargetIds()) {
+      const obj = this.currentState.getObject(id)
+      if (obj !== undefined && obj.kind === 'text' && obj.text !== text) {
+        tr.addStep(new UpdateObject(id, { text }))
+        changed = true
+      }
+    }
+    if (changed) {
+      this.dispatch(tr)
+    }
+  }
+
+  /**
+   * 修改选中文本（含编辑中的文本）的样式（可撤销），toggle 语义（对齐旧 setStyle）：
+   * 传入值与该字段当前值相同 → 重置为该字段默认值（TEXT_STYLE_DEFAULTS）；否则设为传入值。
+   */
+  changeTextStyle(styleObj?: TextStyleOptions): void {
+    if (styleObj === undefined) {
+      return
+    }
+    const tr = this.newTransaction()
+    let changed = false
+    for (const id of this.textTargetIds()) {
+      const obj = this.currentState.getObject(id)
+      if (obj === undefined || obj.kind !== 'text') {
+        continue
+      }
+      const attrs: ObjectAttrs = {}
+      for (const key of Object.keys(styleObj) as (keyof TextStyleOptions)[]) {
+        const value = styleObj[key]
+        if (value === undefined) {
+          continue
+        }
+        attrs[key] = obj[key] === value ? TEXT_STYLE_DEFAULTS[key] : value
+      }
+      if (Object.keys(attrs).length > 0) {
+        tr.addStep(new UpdateObject(id, attrs))
+        changed = true
+      }
+    }
+    if (changed) {
+      this.dispatch(tr)
+    }
+  }
+
+  /** 是否有文本正处于编辑态（keymap 的 Delete 守卫通过鸭子类型调用）。 */
+  isTextEditing(): boolean {
+    return this.textController?.isEditing() ?? false
+  }
+
+  /** changeText/changeTextStyle 的目标集：选中文本 + 编辑中的文本（对齐旧「作用于 active 文本」）。 */
+  private textTargetIds(): string[] {
+    const ids = [...this.currentState.selection]
+    const editingId = this.textController?.getEditingId()
+    if (editingId !== undefined && !ids.includes(editingId)) {
+      ids.push(editingId)
+    }
+    return ids
+  }
+
+  /** 对当前选中且 kind==='path' 且 tool 在 tools 内的对象 dispatch UpdateObject。 */
+  private changeSelectedPathStyle(
+    tools: ReadonlyArray<PathObject['tool']>,
+    setting?: { width?: number, color?: string, dash?: number[] },
+  ): void {
+    if (setting === undefined) {
+      return
+    }
+    const attrs: ObjectAttrs = {}
+    if (setting.color !== undefined) {
+      attrs.stroke = setting.color
+      if (tools.includes('arrow')) {
+        // 箭头头部为填充三角（对齐旧实心行为），换色需同步 fill，否则头部滞留旧色
+        attrs.fill = setting.color
+      }
+    }
+    if (setting.width !== undefined) {
+      attrs.strokeWidth = setting.width
+    }
+    if (setting.dash !== undefined) {
+      attrs.strokeDash = setting.dash
+    }
+    if (Object.keys(attrs).length === 0) {
+      return
+    }
+    const tr = this.newTransaction()
+    let changed = false
+    for (const id of this.currentState.selection) {
+      const obj = this.currentState.getObject(id)
+      if (obj !== undefined && obj.kind === 'path' && tools.includes(obj.tool)) {
+        const objectAttrs = { ...attrs }
+        if (obj.tool === 'measurement' && setting.width !== undefined && obj.strokeWidth !== setting.width) {
+          Object.assign(objectAttrs, pathPositionAfterStrokeWidthChange(obj, setting.width))
+        }
+        tr.addStep(new UpdateObject(id, objectAttrs))
+        changed = true
+      }
+    }
+    if (changed) {
+      this.dispatch(tr)
+    }
+  }
+
+  /**
+   * 调整 fit 上限与容器尺寸（对齐旧 resizeCanvasDimension：setCssMaxDimension + refit）。
+   * dimension 缺省时 no-op；refit 不进历史。
+   */
+  resizeCanvasDimension(dimension?: { width?: number, height?: number }): void {
+    if (dimension === undefined) {
+      return
+    }
+    this.fabricRenderer?.setCssMaxDimension(dimension)
+    this.refitViewport()
+  }
+
+  /** refit：viewport 归位（zoom 1、pan 0），fitScale 随 cssMax 重算、图像重新居中；不进历史。 */
+  adjustCanvasDimension(): void {
+    this.refitViewport()
+  }
+
+  /**
+   * 容器尺寸变化通知（React CanvasView 的 ResizeObserver 触发）：有 renderer 时委托做
+   * 无状态重排（zoom/pan 保持，按新容器尺寸重算居中）；无头模式 no-op。
+   */
+  notifyResize(): void {
+    this.renderer?.notifyResize()
+  }
+
+  /**
+   * refit 始终 dispatch：即使 viewport 已是 {1,0,0}（setCssMaxDimension 改过 cssMax/尺寸后
+   * 视觉仍需重算），也要触发 syncState → syncCanvasSize + applyViewport。viewport 内容
+   * 不变时 sameViewport 抑制 change:viewport，不发历史、无可见副作用。
+   */
+  private refitViewport(): void {
+    this.dispatch(
+      this.newTransaction().setViewport({ zoom: 1, panX: 0, panY: 0 }).setMeta('addToHistory', false),
+    )
+  }
+
+  // —— 导出 ——
+
+  private requireFabricRenderer(): FabricRenderer {
+    if (this.fabricRenderer === undefined) {
+      throw new Error('Export requires a FabricRenderer (unavailable in headless mode)')
+    }
+    return this.fabricRenderer
+  }
+
+  /**
+   * 导出 dataURL（背景原始像素 × multiplier，不受 zoom/pan 影响）；无背景时导出当前画布现状。
+   * 入参兼容旧签名：裸 MIME 字符串等价于 `{ type }`。
+   * `selectionOnly: true` 时仅导出选中对象（裁剪到选中集 bbox、不含背景、透明底），空选中抛错。
+   */
+  toDataURL(options?: string | ExportImageOptions): string {
+    const renderer = this.requireFabricRenderer()
+    if (typeof options === 'object' && options.selectionOnly === true) {
+      return exportSelectionDataURL(renderer, this.currentState.selection, options)
+    }
+    return exportDocDataURL(renderer, this.currentState.doc.background, options)
+  }
+
+  /** 导出 Blob，进制与选项同 toDataURL。 */
+  toBlobData(options?: string | ExportImageOptions): Promise<Blob | null> {
+    const renderer = this.requireFabricRenderer()
+    if (typeof options === 'object' && options.selectionOnly === true) {
+      return exportSelectionBlob(renderer, this.currentState.selection, options)
+    }
+    return exportDocBlob(renderer, this.currentState.doc.background, options)
+  }
+
+  /**
+   * 预估导出像素尺寸（导出文件名等用途）：整图 = 背景尺寸，仅选中 = 选中对象 doc bbox 并集
+   * （未旋转近似，与 objectBBox 一致），均 × multiplier。无背景整图 / 空选中返回 null。
+   */
+  getExportSize(options?: { multiplier?: number, selectionOnly?: boolean }): { width: number, height: number } | null {
+    const multiplier
+            = options?.multiplier !== undefined && options.multiplier > 0 ? options.multiplier : 1
+    if (options?.selectionOnly === true) {
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+      let found = false
+      for (const id of this.currentState.selection) {
+        const obj = this.currentState.getObject(id)
+        if (obj === undefined) {
+          continue
+        }
+        const bbox = objectBBox(obj)
+        minX = Math.min(minX, bbox.left)
+        minY = Math.min(minY, bbox.top)
+        maxX = Math.max(maxX, bbox.left + bbox.width)
+        maxY = Math.max(maxY, bbox.top + bbox.height)
+        found = true
+      }
+      if (!found) {
+        return null
+      }
+      return { width: Math.round((maxX - minX) * multiplier), height: Math.round((maxY - minY) * multiplier) }
+    }
+    const bg = this.currentState.doc.background
+    if (bg === null) {
+      return null
+    }
+    return { width: Math.round(bg.width * multiplier), height: Math.round(bg.height * multiplier) }
+  }
+
+  /** 当前视口可见区域（容器 CSS 像素）的 dataURL。 */
+  getViewPortImage(): string {
+    return exportViewportImage(this.requireFabricRenderer())
+  }
+
+  /** 容器可见区域在 doc 坐标系下的矩形；无头模式返回全 0。 */
+  getViewPortInfo(): ViewportInfo {
+    if (this.fabricRenderer === undefined) {
+      return { width: 0, height: 0, left: 0, top: 0 }
+    }
+    return getViewportDocRect(this.fabricRenderer)
+  }
+
+  setDisplayValueRange(range: [number, number], options?: { mergeKey?: string }): void {
+    const background = this.currentState.doc.background
+    if (!background)
+      return
+    const next = normalizeValueRange(range)
+    const current = background.valueRange ?? [0, 255]
+    if (current[0] === next[0] && current[1] === next[1])
+      return
+    const tr = this.newTransaction().addStep(new SetValueRange(background.valueRange, next[0] === 0 && next[1] === 255 ? undefined : next))
+    if (options?.mergeKey)
+      tr.setMeta('mergeKey', options.mergeKey)
+    this.dispatch(tr)
+  }
+
+  getBackgroundImageData(): ImageData | null {
+    return this.fabricRenderer?.getBackgroundImageData() ?? null
+  }
+
+  getCompositePixel(x: number, y: number): { r: number, g: number, b: number, a: number } | null {
+    return this.fabricRenderer?.getCompositePixel(x, y) ?? null
+  }
+
+  /** Includes live geometry previews and asynchronously loaded image layers. */
+  subscribeCanvasRender(listener: () => void): () => void {
+    const canvas = this.fabricRenderer?.canvas
+    canvas?.on('after:render', listener)
+    return () => {
+      canvas?.off('after:render', listener)
+    }
+  }
+
+  destroy(): void {
+    this.renderer?.destroy()
+    for (const plugin of this.plugins) {
+      plugin.destroy?.()
+    }
+    this.listeners.clear()
+    this.emitter.clear()
+  }
+}
