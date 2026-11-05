@@ -5,8 +5,8 @@
 - Display name: Image Manager Pro.
 - Extension name: `image-manager-pro`.
 - GitHub repository: `130040167/image-manager-pro`.
-- The manifest still contains the upstream publisher `Minko`. Replace it with your own verified Marketplace publisher ID before publishing. `npm run publish:market` refuses to use the upstream identity.
-- Version remains `3.3.10`; choose the first public version before release.
+- Marketplace publisher: `lucymystery`. The extension identity is `lucymystery.image-manager-pro`.
+- Initial public version: `3.3.10`, retaining the development version number.
 - Commands and settings retain the `image-manager` namespace for compatibility.
 
 ## Descriptions
@@ -36,4 +36,4 @@ Create the intended GitHub repository and confirm its URLs. Register or select y
 
 The initial GitHub publication uses a clean current-source snapshot. Original development history remains in the local checkout because it includes local environment and diagnostic files. Local plans, environment files, and upstream automation requiring the original author's credentials are excluded from that snapshot.
 
-Marketplace publication requires the new owner's verified publisher ID and publishing credentials. The preparation scripts do not publish automatically.
+Publish using the `lucymystery` account in the Marketplace management page, or authenticate VSCE with publishing credentials. The preparation scripts do not publish automatically.
