@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [3.3.12] - 2026-11-07
+
+### Documentation
+
+- Reworked the GitHub and Marketplace introductions around the main workflows.
+- Added current runtime screenshots for search, compression and similarity search.
+- Documented wheel zoom/page switching, pixel inspection, editable layers and editable measurements.
+
 ## [3.3.11] - 2026-11-06
 
 ### Improvements

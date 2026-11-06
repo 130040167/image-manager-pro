@@ -4,67 +4,135 @@
 
 <h1 align="center">Image Manager Pro</h1>
 
-<p align="center">Browse, inspect, edit, and measure images in VS Code.</p>
+<p align="center">A fast image workspace for browsing, inspecting, measuring and editing inside VS Code.</p>
 
 [简体中文](./README.zh.md)
 
-Image Manager Pro brings workspace image management and an image editor into VS Code, with tools for everyday assets and scientific image data.
+Image Manager Pro keeps the image workflow next to your code. Browse a folder, search by filename, inspect a pixel, tune a threshold, measure a feature, or create an editable annotation without leaving VS Code.
 
-Go from a folder of images to a closer look at the data: inspect a pixel's color, adjust the histogram range to reveal faint details, measure a feature, or make a quick annotated edit without leaving your workspace.
+## Start With Your Image Library
 
-## Workspace Gallery
+The gallery is built for real folders, not one-off uploads. Expand directories, search filenames, filter and sort the current view, select several images, and open actions from the same context menu.
 
-Browse images by folder, search, filter, and sort the gallery, then work on multiple selected files. Batch compression, format conversion, and similarity search help organize image collections.
+![Image Manager Pro workspace gallery](./screenshots/release/home.png)
 
-![Workspace image gallery](./screenshots/release/home.png)
+Small details make repeated work faster:
 
-## Image Preview
+- Search by filename with case-sensitive and whole-word modes.
+- Keep the folder hierarchy visible while browsing a large workspace.
+- Use the same image selection for compression, conversion, rename and similarity search.
+- Open an image in the VS Code or system explorer, copy its name or path, or reveal it in the viewer.
+- The gallery supports dark and light VS Code themes.
 
-Zoom and pan to examine fine details, rotate or flip the view, and check image metadata. Preview common image formats alongside TIFF and configurable NPY and raw binary image data. Raw data presets describe dimensions, data type, and other decoding options.
+## Preview Images The Way You Work
 
-![Image preview with inspection tools](./screenshots/release/preview.png)
+Open a large preview and decide what the mouse wheel should do. The toolbar switches between wheel zoom and wheel paging, so the same gesture can either inspect detail or move through a sequence of images.
 
-### Pixel-Level Inspection
+![Image preview with navigation and inspection controls](./screenshots/release/preview.png)
 
-- Read the pixel coordinates and RGBA color values at the inspected position.
-- Zoom in far enough to see the pixel grid and numerical grayscale or RGB values directly over individual pixels.
-- Switch between original and display-adjusted pixel values when working with histogram adjustments, so you can distinguish source values from the appearance on screen.
+Useful preview controls include:
 
-### Histograms and Thresholds
+- Zoom with the wheel, toolbar buttons or a percentage input.
+- Switch the wheel to left/right image paging when reviewing a folder.
+- Fit the image to the window, reset the center, rotate, flip and move through the preview.
+- Keep the side navigation available while inspecting a single image.
+- Open the editor or histogram without losing the current image.
+- Preview common formats together with TIFF, NPY and configurable raw binary data.
 
-- Inspect RGB or grayscale distributions to understand the image's intensity range.
-- Drag the lower and upper bounds, or enter numerical values, to adjust the displayed range and make low-contrast details easier to see.
-- Set both bounds to the same value for a binary threshold display, useful for inspecting intensity boundaries.
-- Compare original and adjusted pixel modes while exploring the image. These controls support visual inspection; they do not provide automated segmentation statistics.
+## Read The Image, Pixel By Pixel
 
-![Preview histogram and pixel inspection](./screenshots/release/preview-details.png)
+At high zoom levels, the preview becomes a practical pixel inspection tool. Move over the image to read coordinates and color values, then compare source data with the adjusted display.
 
-## Image Editor
+![Pixel grid, color values and histogram controls](./screenshots/release/preview-details.png)
 
-Make everyday image edits in the same workspace: crop, rotate, add text, draw shapes and arrows, use a brush or mosaic, and adjust brightness, contrast, saturation, blur, or grayscale. Manage annotation objects and layers, change their visibility or lock state, and undo or redo edits.
+- Display an enlarged pixel grid with grayscale or RGB values on individual pixels.
+- Read the current pixel coordinate and RGBA value directly from the preview.
+- Switch between raw values and values after the current display adjustment.
+- Inspect RGB or grayscale histograms while keeping the image visible.
+- Drag or enter lower and upper histogram bounds to reveal faint structures.
+- Set both bounds to the same value for a binary threshold view.
 
-![Image editor with annotations and measurements](./screenshots/release/editor.png)
+This is useful for checking edges, masks, low-contrast regions, screenshots, icons and scientific images. Threshold adjustment is visual and immediate; it does not pretend to be an automatic segmentation result.
 
-### Measurements and Annotations
+## Edit With Objects You Can Revisit
 
-Measure lengths, angles, and the perimeter or area of supported shapes. Lengths and perimeters use pixels, areas use square pixels, and angles use degrees. Keep measurements readable with configurable decimal precision, label text, colors, and backgrounds.
+The editor is designed for changes that may need another pass. Crop, rotate, adjust brightness or contrast, add text, draw shapes and arrows, brush, mosaic, and export the result from one workspace.
 
-Choose whether to show a measurement's name, value, or both; adjust line endpoints and angle arcs; and configure perimeter and area labels separately. Combine measurements with pixel and histogram inspection when documenting a feature in an image.
+![Image editor with layers and editable objects](./screenshots/release/editor.png)
 
-![Editor measurement annotations and histogram](./screenshots/release/editor-measurements.png)
+- Every drawn shape, arrow, text object and measurement stays in the layer list.
+- Select an object later to move, resize, restyle, hide or lock it.
+- Keep multiple annotations independent instead of flattening them into pixels.
+- Use undo and redo while experimenting with an edit.
+- Change line width, dash style, colors, text and alignment from the properties panel.
+- Export the edited image with a chosen format, scale, range and quality.
 
-## Getting Started
+## Measure, Then Adjust The Measurement
 
-Open a workspace, run **Image Manager Pro** from the Command Palette, or open it from a folder's context menu. The default shortcut is `Shift+Alt+J` on Windows/Linux and `Cmd+Alt+J` on macOS.
+Length, angle, polygon perimeter and ellipse or polygon area measurements are stored as editable objects. A measurement is not a screenshot pasted over the image: select it again, drag its points, move its label, or change the way it is displayed.
 
-Choose **English** or **Simplified Chinese** in the extension's language settings
-(`image-manager.appearance.language`). Editor tools, properties, colors and
-measurement labels update immediately while retaining the current edits.
-Custom names and existing text keep their original content.
+![Editable measurements and histogram in the editor](./screenshots/release/editor-measurements.png)
 
-Image processing uses Sharp and platform-specific native dependencies. The extension can download these dependencies when needed; the first setup requires network access. Supported processing and conversion formats depend on the available native codecs. NPY and raw binary formats require compatible data and decoding settings.
+- Drag measurement points and angle arcs after creation.
+- Report lengths and perimeters in pixels, areas in square pixels and angles in degrees.
+- Choose the number of decimal places.
+- Show the measurement name, value or both.
+- Configure label color, font, background and opacity.
+- Adjust perimeter and area labels separately.
+- Lock a finished measurement when it should stay in place.
 
-For packaging and publication steps, see [RELEASING.md](./RELEASING.md).
+## Search Large Workspaces Quickly
+
+The filename search dialog is useful when the folder is already bigger than your screen. It searches the loaded workspace and keeps the result as a small, focused image set.
+
+![Filename search in the workspace](./screenshots/release/search.png)
+
+- Search as you type and jump straight to the matching image.
+- Use case-sensitive or whole-word matching when filenames are systematic.
+- Open the result directly in preview, the editor or the file context menu.
+- Keep search history available with the arrow keys.
+
+## Compress And Convert In Batches
+
+Compression is configured in one place for the selected images. Choose a target format, quality, scale, output folder and whether to keep originals.
+
+![Image compression settings](./screenshots/release/compression.png)
+
+- Compress PNG, JPG, JPEG, WebP, GIF, TIFF, AVIF and HEIF where the installed backend supports them.
+- Set image quality, compression level and output scale.
+- Skip files that are already compressed.
+- Keep the original files or write results to a tool folder.
+- Run the same operation on a selection or a directory.
+
+## Find Visual Duplicates
+
+Similarity search compares images with configurable algorithms and thresholds, then presents the closest matches in the same dialog.
+
+![Similarity search with adjustable threshold](./screenshots/release/similarity.png)
+
+- Compare images in the current directory or across loaded directories.
+- Choose a hybrid, pHash, dHash, aHash or histogram-based method.
+- Adjust the threshold and maximum result count.
+- Use stricter values for fewer false positives or higher values for more variants.
+- Open a matched image in the same preview and editing workflow.
+
+## Work With More Than JPG And PNG
+
+Preview TIFF, NPY arrays and raw binary image data with configurable dimensions and data types. The same pixel, histogram and threshold tools remain available so the format does not interrupt the inspection workflow.
+
+## Language And Theme
+
+Choose **English** or **Simplified Chinese** with `image-manager.appearance.language`. Editor tools, properties, colors and measurement labels update immediately while keeping the current canvas, layers, custom names and existing text. Traditional Chinese, Japanese and German remain available for the main interface, with English fallback for newer editor labels.
+
+Light and dark VS Code themes are supported.
+
+## Get Started
+
+Open a workspace containing images, then run **Image Manager Pro** from the Command Palette or the folder context menu.
+
+Default shortcut: `Shift+Alt+J` on Windows/Linux and `Cmd+Alt+J` on macOS.
+
+Some image operations use Sharp and platform-specific native dependencies. The extension can install these when enabled in settings; supported formats depend on the available codecs.
 
 ## Acknowledgments
 
