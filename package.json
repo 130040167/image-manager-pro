@@ -3,7 +3,7 @@
   "name": "image-manager-pro",
   "displayName": "Image Manager Pro",
   "type": "commonjs",
-  "version": "3.3.12",
+  "version": "3.3.13",
   "private": true,
   "packageManager": "npm@11.5.2",
   "description": "Browse, preview, edit, measure, compress and convert workspace images in VS Code.",

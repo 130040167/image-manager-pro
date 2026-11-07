@@ -45,7 +45,7 @@ At high zoom levels, the preview becomes a practical pixel inspection tool. Move
 
 ![Pixel grid, color values and histogram controls](./screenshots/release/preview-details.png)
 
-- Display an enlarged pixel grid with grayscale or RGB values on individual pixels.
+- Use the 5000% preset to display an enlarged pixel grid with grayscale or RGB values on individual pixels.
 - Read the current pixel coordinate and RGBA value directly from the preview.
 - Switch between raw values and values after the current display adjustment.
 - Inspect RGB or grayscale histograms while keeping the image visible.
@@ -56,7 +56,7 @@ This is useful for checking edges, masks, low-contrast regions, screenshots, ico
 
 ## Edit With Objects You Can Revisit
 
-The editor is designed for changes that may need another pass. Crop, rotate, adjust brightness or contrast, add text, draw shapes and arrows, brush, mosaic, and export the result from one workspace.
+The editor is designed for changes that may need another pass. Crop, rotate, adjust brightness or contrast, add text, draw rectangles, circles, triangles and arrows, brush, mosaic, and export the result from one workspace.
 
 ![Image editor with layers and editable objects](./screenshots/release/editor.png)
 

@@ -25,7 +25,7 @@ Search filenames, browse folders, filter and sort the current view, select sever
 ![Pixel inspection and histogram](./screenshots/release/preview-details.png)
 
 - Read pixel coordinates and RGBA values at the pointer.
-- Zoom far enough to see a pixel grid with grayscale or RGB labels.
+- Use the 5000% preset to see a pixel grid with grayscale or RGB labels.
 - Compare raw values with values after the current display adjustment.
 - View RGB or grayscale histograms.
 - Drag or enter lower and upper bounds to reveal low-contrast structures.
@@ -36,7 +36,7 @@ Search filenames, browse folders, filter and sort the current view, select sever
 ![Image editor with layers](./screenshots/release/editor.png)
 
 - Crop, rotate, adjust brightness, contrast, saturation, blur and grayscale.
-- Add text, shapes, arrows, brush strokes and mosaic blocks.
+- Add text, rectangles, circles, triangles, arrows, brush strokes and mosaic blocks.
 - Keep every object in a layer list so it can be moved, restyled, hidden or locked later.
 - Use undo and redo while refining an annotation.
 - Export with a chosen format, scale, range and quality.
@@ -45,7 +45,7 @@ Search filenames, browse folders, filter and sort the current view, select sever
 
 ![Editable measurements](./screenshots/release/editor-measurements.png)
 
-Length, angle, polygon perimeter and supported shape area measurements are stored as objects rather than flattened pixels.
+Line, angle, polygon and ellipse measurements are stored as objects rather than flattened pixels.
 
 - Drag measurement points and angle arcs after creation.
 - Choose decimal precision and show the name, value or both.

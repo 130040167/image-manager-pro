@@ -36,4 +36,20 @@ Create the intended GitHub repository and confirm its URLs. Register or select y
 
 The initial GitHub publication uses a clean current-source snapshot. Original development history remains in the local checkout because it includes local environment and diagnostic files. Local plans, environment files, and upstream automation requiring the original author's credentials are excluded from that snapshot.
 
-Publish using the `lucymystery` account in the Marketplace management page, or authenticate VSCE with publishing credentials. The preparation scripts do not publish automatically.
+Publish using the `lucymystery` account in the Marketplace management page, or authenticate VSCE with publishing credentials. The local preparation scripts do not publish automatically.
+
+## Automatic Marketplace Updates
+
+The `Publish to VS Code Marketplace` GitHub Actions workflow publishes the VSIX
+attached to a published GitHub Release. Use a tag such as `v3.3.13` and attach
+`image-manager-pro-3.3.13.vsix` before publishing the release. The workflow checks
+the package identity and version, then uses VSCE 4.1.0 with OIDC.
+
+In Marketplace, the `lucymystery` publisher's Trusted Publishing policy must
+authorize repository owner `130040167`, repository `image-manager-pro` and workflow
+`publish-marketplace.yml`. Leave Environment empty. No PAT or GitHub repository
+secret is needed.
+
+For an existing release, run the workflow manually with its tag. A successful
+submission can still show `Verifying` in Marketplace; confirm the version is
+publicly available before calling the release complete.
