@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [3.3.14] - 2026-11-14
+
+### Documentation
+
+- Add Chinese introductions, bilingual section headings and feature summaries to the GitHub homepage and Marketplace listing.
+- 在首页直接补充中文功能介绍，涵盖预览、像素检查、图层编辑、测量和批量处理，并保留完整中文文档入口。
+
 ## [3.3.12] - 2026-11-07
 
 ### Documentation
